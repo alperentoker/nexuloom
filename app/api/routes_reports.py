@@ -16,20 +16,23 @@ router = APIRouter(prefix="/api/reports", tags=["Reports"])
 
 class ReportGenerateRequest(BaseModel):
     database_name: str
-    title: Optional[str] = "Nexuloom Data Intelligence Report"
-    period: Optional[str] = "September 2026"
+    title: Optional[str] = None
+    period: Optional[str] = None
     sections: Optional[List[str]] = None
     export_format: Optional[str] = "ALL"  # PDF, HTML, EXCEL, CSV, JSON, ALL
+    language: Optional[str] = "tr"  # "tr" or "en"
 
 
 @router.post("/generate")
 def generate_report(req: ReportGenerateRequest):
     try:
         builder = ReportBuilder(req.database_name)
+        lang = (req.language or "tr").lower()
         data = builder.build_report_data(
-            title=req.title or "Business Intelligence Report",
-            period=req.period or "September 2026",
+            title=req.title,
+            period=req.period,
             included_sections=req.sections,
+            language=lang,
         )
 
         fmt = (req.export_format or "ALL").upper()
@@ -95,3 +98,18 @@ def download_report(filename: str):
             raise HTTPException(status_code=404, detail=f"Report file '{filename}' not found.")
 
     return FileResponse(path=str(file_path), filename=safe_name)
+
+
+@router.get("/observations/{database_name}")
+def get_database_observations(database_name: str, language: str = "tr"):
+    try:
+        builder = ReportBuilder(database_name)
+        lang = (language or "tr").lower()
+        data = builder.build_report_data(language=lang)
+        return {
+            "database_name": database_name,
+            "language": lang,
+            "observations": data.get("observations", []),
+        }
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))

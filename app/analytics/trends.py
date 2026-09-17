@@ -1,6 +1,7 @@
 from typing import Any, Dict, List, Optional
 import numpy as np
 from scipy import stats
+from app.core.i18n import localize_kpi_name
 
 
 class TrendAnalyzer:
@@ -14,13 +15,17 @@ class TrendAnalyzer:
         unit: str = "",
     ) -> Dict[str, Any]:
         """Analyzes a series of [{"period": "2026-01", "value": 100.0}, ...]."""
+        metric_tr = localize_kpi_name(metric_name, "tr")
         if not data_points or len(data_points) < 2:
             return {
                 "metric_name": metric_name,
+                "metric_name_tr": metric_tr,
                 "data_points_count": len(data_points) if data_points else 0,
                 "trend_direction": "INSUFFICIENT_DATA",
+                "trend_direction_tr": "YETERSİZ VERİ",
                 "growth_rate_pct": 0.0,
                 "explanation": f"Insufficient historical data points ({len(data_points) if data_points else 0}) to establish a reliable trend for {metric_name}.",
+                "explanation_tr": f"{metric_tr} için güvenilir bir trend belirlemek adına yetersiz geçmiş veri noktası ({len(data_points) if data_points else 0}).",
                 "moving_average": [],
                 "sudden_changes": [],
             }
@@ -107,10 +112,34 @@ class TrendAnalyzer:
             sc = sudden_changes[0]
             narrative += f"A significant sudden change occurred between {sc['from_period']} and {sc['to_period']} ({sc['change_percentage']:+0.1f}%). "
 
+        # Turkish narrative
+        sign_str_tr = "artış gösterdi" if total_growth_pct > 0 else ("azalış gösterdi" if total_growth_pct < 0 else "yatay seyretti")
+        narrative_tr = f"{metric_tr}, analiz edilen dönem boyunca %{pct_abs} {sign_str_tr} ({round(first_val, 1)}{unit_str} değerinden {round(last_val, 1)}{unit_str} değerine). "
+
+        if direction == "UPWARD":
+            narrative_tr += f"Zaman serisi istatistiksel olarak tutarlı bir yukarı yönlü trend sergilemektedir (R² = {r_squared:.2f}). "
+        elif direction == "DOWNWARD":
+            narrative_tr += f"Zaman serisi istatistiksel olarak tutarlı bir aşağı yönlü trend sergilemektedir (R² = {r_squared:.2f}). "
+        else:
+            narrative_tr += "Genel seyir belirgin bir yön momentumu olmaksızın nispeten stabil kalmıştır. "
+
+        if sudden_changes:
+            sc = sudden_changes[0]
+            narrative_tr += f"{sc['from_period']} ile {sc['to_period']} arasında belirgin bir ani değişim kaydedildi (%{sc['change_percentage']:+0.1f}). "
+
+        dir_map_tr = {
+            "UPWARD": "YUKARI YÖNLÜ",
+            "DOWNWARD": "AŞAĞI YÖNLÜ",
+            "STABLE": "DURAĞAN",
+            "INSUFFICIENT_DATA": "YETERSİZ VERİ",
+        }
+
         return {
             "metric_name": metric_name,
+            "metric_name_tr": metric_tr,
             "unit": unit,
             "trend_direction": direction,
+            "trend_direction_tr": dir_map_tr.get(direction, direction),
             "total_growth_percentage": round(total_growth_pct, 2),
             "linear_slope": round(float(slope), 4),
             "r_squared": round(r_squared, 4),
@@ -120,4 +149,5 @@ class TrendAnalyzer:
             "sudden_changes": sudden_changes,
             "moving_average_series": ma_series,
             "explanation": narrative.strip(),
+            "explanation_tr": narrative_tr.strip(),
         }

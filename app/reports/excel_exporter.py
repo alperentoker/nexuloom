@@ -3,10 +3,11 @@ from typing import Any, Dict, Optional
 import openpyxl
 from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
 from app.core.config import settings
+from app.core.i18n import t, localize_kpi_name, localize_severity, localize_trend_direction, localize_rule
 
 
 class ExcelExporter:
-    """Generates multi-worksheet corporate Excel report using openpyxl."""
+    """Generates multi-worksheet corporate Excel report using openpyxl with full TR/EN i18n."""
 
     HEADER_FILL = PatternFill(start_color="1E293B", end_color="1E293B", fill_type="solid")
     HEADER_FONT = Font(name="Calibri", size=11, bold=True, color="FFFFFF")
@@ -21,39 +22,46 @@ class ExcelExporter:
     )
 
     @classmethod
-    def export(cls, report_data: Dict[str, Any], output_path: Optional[Path] = None) -> Path:
+    def export(
+        cls,
+        report_data: Dict[str, Any],
+        output_path: Optional[Path] = None,
+        language: Optional[str] = None,
+    ) -> Path:
+        lang = language or report_data.get("language", "tr")
+        is_tr = lang == "tr"
+
         dest = output_path or (
             settings.UDI_REPORTS_DIR / "exports" / f"report_{report_data.get('database_name', 'db')}_{int(hash(report_data.get('generated_at', '')) % 1000000)}.xlsx"
         )
         dest.parent.mkdir(parents=True, exist_ok=True)
 
         wb = openpyxl.Workbook()
-        # Remove default sheet
-        wb.remove(wb.active)
+        wb.remove(wb.active)  # Remove default sheet
 
         # 1. Summary Sheet
-        ws_summary = wb.create_sheet(title="Summary")
-        cls._populate_summary(ws_summary, report_data)
+        ws_summary = wb.create_sheet(title=t("sheet_summary", lang))
+        cls._populate_summary(ws_summary, report_data, lang)
 
         # 2. KPIs Sheet
-        ws_kpis = wb.create_sheet(title="KPIs")
-        cls._populate_kpis(ws_kpis, report_data.get("kpis", []))
+        ws_kpis = wb.create_sheet(title=t("sheet_kpis", lang))
+        cls._populate_kpis(ws_kpis, report_data.get("kpis", []), lang)
 
         # 3. Trends Sheet
-        ws_trends = wb.create_sheet(title="Trends")
-        cls._populate_trends(ws_trends, report_data.get("trends", []))
+        ws_trends = wb.create_sheet(title=t("sheet_trends", lang))
+        cls._populate_trends(ws_trends, report_data.get("trends", []), lang)
 
         # 4. Anomalies Sheet
-        ws_anom = wb.create_sheet(title="Anomalies")
-        cls._populate_anomalies(ws_anom, report_data.get("anomalies", []))
+        ws_anom = wb.create_sheet(title=t("sheet_anomalies", lang))
+        cls._populate_anomalies(ws_anom, report_data.get("anomalies", []), lang)
 
         # 5. Data Quality Sheet
-        ws_dq = wb.create_sheet(title="Data Quality")
-        cls._populate_data_quality(ws_dq, report_data.get("quality", {}))
+        ws_dq = wb.create_sheet(title=t("sheet_quality", lang))
+        cls._populate_data_quality(ws_dq, report_data.get("quality", {}), lang)
 
-        # 6. Raw Results / Violations Sheet
-        ws_raw = wb.create_sheet(title="Raw Results")
-        cls._populate_raw_results(ws_raw, report_data)
+        # 6. Raw Results / Rules Sheet
+        ws_raw = wb.create_sheet(title=t("sheet_rules", lang))
+        cls._populate_raw_results(ws_raw, report_data, lang)
 
         wb.save(dest)
         return dest
@@ -68,34 +76,49 @@ class ExcelExporter:
             cell.border = cls.THIN_BORDER
 
     @classmethod
-    def _populate_summary(cls, ws, report: Dict[str, Any]):
-        ws.cell(row=1, column=1, value=report.get("title", "Business Intelligence Report")).font = cls.TITLE_FONT
-        ws.cell(row=2, column=1, value=f"Period: {report.get('period', '')} | Database: {report.get('database_name', '')} | Generated: {report.get('generated_at', '')}").font = cls.REGULAR_FONT
+    def _populate_summary(cls, ws, report: Dict[str, Any], lang: str):
+        is_tr = lang == "tr"
+        title = report.get("title") or t("default_report_title", lang)
+        period = report.get("period") or t("default_period", lang)
+        db = report.get("database_name", "")
+        gen = report.get("generated_at", "")
 
-        ws.cell(row=4, column=1, value="Executive Observations").font = cls.BOLD_FONT
+        ws.cell(row=1, column=1, value=title).font = cls.TITLE_FONT
+        ws.cell(row=2, column=1, value=f"{t('report_period', lang)}: {period} | {t('database', lang)}: {db} | {t('generated_at', lang)}: {gen}").font = cls.REGULAR_FONT
+
+        ws.cell(row=4, column=1, value=t("sec_executive_summary", lang)).font = cls.BOLD_FONT
         row_cursor = 5
         for obs in report.get("observations", []):
             ws.cell(row=row_cursor, column=1, value=f"• {obs}").font = cls.REGULAR_FONT
             row_cursor += 1
 
         row_cursor += 1
-        ws.cell(row=row_cursor, column=1, value="Database Overview").font = cls.BOLD_FONT
+        overview_title = "Veritabanı Genel Bakış" if is_tr else "Database Overview"
+        ws.cell(row=row_cursor, column=1, value=overview_title).font = cls.BOLD_FONT
         row_cursor += 1
         catalog = report.get("catalog_summary", {})
-        ws.cell(row=row_cursor, column=1, value=f"Total Tables: {catalog.get('table_count', 0)}").font = cls.REGULAR_FONT
+        tbl_lbl = "Toplam Tablo Sayısı" if is_tr else "Total Tables"
+        rec_lbl = "Toplam İncelenen Kayıt Sayısı" if is_tr else "Total Records Profiled"
+        ws.cell(row=row_cursor, column=1, value=f"{tbl_lbl}: {catalog.get('table_count', 0)}").font = cls.REGULAR_FONT
         row_cursor += 1
-        ws.cell(row=row_cursor, column=1, value=f"Total Records Profiled: {catalog.get('total_rows', 0):,}").font = cls.REGULAR_FONT
-        ws.column_dimensions["A"].width = 80
+        ws.cell(row=row_cursor, column=1, value=f"{rec_lbl}: {catalog.get('total_rows', 0):,}").font = cls.REGULAR_FONT
+        ws.column_dimensions["A"].width = 85
 
     @classmethod
-    def _populate_kpis(cls, ws, kpis: list):
-        headers = ["KPI Name", "Formula", "Current Value", "Unit", "Previous Period", "MoM Growth %", "Target Value", "Target Achievement %"]
+    def _populate_kpis(cls, ws, kpis: list, lang: str):
+        is_tr = lang == "tr"
+        if is_tr:
+            headers = ["Metrik Adı", "Formül", "Mevcut Değer", "Birim", "Önceki Dönem", "Aylık Değişim (MoM %)", "Hedef Değer", "Hedef Gerçekleşme %"]
+        else:
+            headers = ["KPI Name", "Formula", "Current Value", "Unit", "Previous Period", "MoM Growth %", "Target Value", "Target Achievement %"]
+
         for c_idx, h in enumerate(headers, start=1):
             ws.cell(row=1, column=c_idx, value=h)
         cls._style_headers(ws, 1, len(headers))
 
         for r_idx, k in enumerate(kpis, start=2):
-            ws.cell(row=r_idx, column=1, value=k.get("name", "")).font = cls.BOLD_FONT
+            k_name = localize_kpi_name(k.get("name", ""), lang)
+            ws.cell(row=r_idx, column=1, value=k_name).font = cls.BOLD_FONT
             ws.cell(row=r_idx, column=2, value=k.get("formula", "")).font = cls.REGULAR_FONT
             ws.cell(row=r_idx, column=3, value=k.get("current_value", 0)).font = cls.BOLD_FONT
             ws.cell(row=r_idx, column=4, value=k.get("unit", "")).font = cls.REGULAR_FONT
@@ -105,93 +128,132 @@ class ExcelExporter:
             ws.cell(row=r_idx, column=8, value=f"{k.get('target_achievement_pct', 0):.1f}%" if k.get("target_achievement_pct") else "-").font = cls.REGULAR_FONT
 
         for c in ["A", "B", "C", "D", "E", "F", "G", "H"]:
-            ws.column_dimensions[c].width = 22
+            ws.column_dimensions[c].width = 24
 
     @classmethod
-    def _populate_trends(cls, ws, trends: list):
-        headers = ["Metric", "Trajectory", "Total Growth %", "Linear Slope", "R² Score", "Volatility (CV %)", "Statistical Explanation"]
+    def _populate_trends(cls, ws, trends: list, lang: str):
+        is_tr = lang == "tr"
+        if is_tr:
+            headers = ["Metrik Adı", "Trend Yönü", "Toplam Büyüme %", "Regresyon Eğimi", "R² Değeri", "Volatilite (CV %)", "İstatistiksel Açıklama"]
+        else:
+            headers = ["Metric", "Trajectory", "Total Growth %", "Linear Slope", "R² Score", "Volatility (CV %)", "Statistical Explanation"]
+
         for c_idx, h in enumerate(headers, start=1):
             ws.cell(row=1, column=c_idx, value=h)
         cls._style_headers(ws, 1, len(headers))
 
-        for r_idx, t in enumerate(trends, start=2):
-            ws.cell(row=r_idx, column=1, value=t.get("metric_name", "")).font = cls.BOLD_FONT
-            ws.cell(row=r_idx, column=2, value=t.get("trend_direction", "")).font = cls.REGULAR_FONT
-            ws.cell(row=r_idx, column=3, value=f"{t.get('total_growth_percentage', 0):+0.1f}%").font = cls.BOLD_FONT
-            ws.cell(row=r_idx, column=4, value=t.get("linear_slope", 0)).font = cls.REGULAR_FONT
-            ws.cell(row=r_idx, column=5, value=t.get("r_squared", 0)).font = cls.REGULAR_FONT
-            ws.cell(row=r_idx, column=6, value=t.get("volatility_coefficient_variation", 0)).font = cls.REGULAR_FONT
-            ws.cell(row=r_idx, column=7, value=t.get("explanation", "")).font = cls.REGULAR_FONT
+        for r_idx, t_item in enumerate(trends, start=2):
+            direction = localize_trend_direction(t_item.get("trend_direction", ""), lang)
+            exp = t_item.get("explanation_tr") if is_tr and t_item.get("explanation_tr") else t_item.get("explanation", "")
+            m_name = localize_kpi_name(t_item.get("metric_name", ""), lang)
 
-        ws.column_dimensions["A"].width = 20
-        ws.column_dimensions["G"].width = 60
+            ws.cell(row=r_idx, column=1, value=m_name).font = cls.BOLD_FONT
+            ws.cell(row=r_idx, column=2, value=direction).font = cls.REGULAR_FONT
+            ws.cell(row=r_idx, column=3, value=f"{t_item.get('total_growth_percentage', 0):+0.1f}%").font = cls.BOLD_FONT
+            ws.cell(row=r_idx, column=4, value=t_item.get("linear_slope", 0)).font = cls.REGULAR_FONT
+            ws.cell(row=r_idx, column=5, value=t_item.get("r_squared", 0)).font = cls.REGULAR_FONT
+            ws.cell(row=r_idx, column=6, value=f"{t_item.get('volatility_cv', 0):.1f}%").font = cls.REGULAR_FONT
+            ws.cell(row=r_idx, column=7, value=exp).font = cls.REGULAR_FONT
+
+        ws.column_dimensions["A"].width = 24
+        ws.column_dimensions["B"].width = 18
+        ws.column_dimensions["C"].width = 18
+        ws.column_dimensions["D"].width = 16
+        ws.column_dimensions["E"].width = 14
+        ws.column_dimensions["F"].width = 18
+        ws.column_dimensions["G"].width = 65
 
     @classmethod
-    def _populate_anomalies(cls, ws, anomalies: list):
-        headers = ["Entity", "Metric", "Severity", "Observed Value", "Normal Min", "Normal Max", "Deviation %", "Detection Method", "Audit Rationale"]
+    def _populate_anomalies(cls, ws, anomalies: list, lang: str):
+        is_tr = lang == "tr"
+        if is_tr:
+            headers = ["Varlık / Kayıt", "Metrik", "Önem Derecesi", "Gözlenen Değer", "Normal Aralık", "Sapma %", "Yöntem", "Açıklama"]
+        else:
+            headers = ["Entity", "Metric", "Severity", "Observed Value", "Normal Range", "Deviation %", "Method", "Explanation"]
+
         for c_idx, h in enumerate(headers, start=1):
             ws.cell(row=1, column=c_idx, value=h)
         cls._style_headers(ws, 1, len(headers))
 
         for r_idx, a in enumerate(anomalies, start=2):
+            sev = localize_severity(a.get("severity", "LOW"), lang)
+            exp = a.get("explanation_tr") if is_tr and a.get("explanation_tr") else a.get("explanation", "")
             ws.cell(row=r_idx, column=1, value=str(a.get("entity", ""))).font = cls.BOLD_FONT
             ws.cell(row=r_idx, column=2, value=str(a.get("metric", ""))).font = cls.REGULAR_FONT
-            ws.cell(row=r_idx, column=3, value=str(a.get("severity", ""))).font = cls.BOLD_FONT
+            ws.cell(row=r_idx, column=3, value=sev).font = cls.BOLD_FONT
             ws.cell(row=r_idx, column=4, value=a.get("observed_value", 0)).font = cls.BOLD_FONT
-            ws.cell(row=r_idx, column=5, value=a.get("normal_range_min", 0)).font = cls.REGULAR_FONT
-            ws.cell(row=r_idx, column=6, value=a.get("normal_range_max", 0)).font = cls.REGULAR_FONT
-            ws.cell(row=r_idx, column=7, value=str(a.get("deviation_pct", ""))).font = cls.REGULAR_FONT
-            ws.cell(row=r_idx, column=8, value=str(a.get("method", ""))).font = cls.REGULAR_FONT
-            ws.cell(row=r_idx, column=9, value=str(a.get("explanation", ""))).font = cls.REGULAR_FONT
+            ws.cell(row=r_idx, column=5, value=str(a.get("normal_range", ""))).font = cls.REGULAR_FONT
+            ws.cell(row=r_idx, column=6, value=str(a.get("deviation_pct", ""))).font = cls.REGULAR_FONT
+            ws.cell(row=r_idx, column=7, value=str(a.get("method", ""))).font = cls.REGULAR_FONT
+            ws.cell(row=r_idx, column=8, value=exp).font = cls.REGULAR_FONT
 
         ws.column_dimensions["A"].width = 20
-        ws.column_dimensions["I"].width = 60
+        ws.column_dimensions["B"].width = 20
+        ws.column_dimensions["C"].width = 16
+        ws.column_dimensions["D"].width = 16
+        ws.column_dimensions["E"].width = 22
+        ws.column_dimensions["F"].width = 16
+        ws.column_dimensions["G"].width = 18
+        ws.column_dimensions["H"].width = 65
 
     @classmethod
-    def _populate_data_quality(cls, ws, dq: dict):
-        ws.cell(row=1, column=1, value="Overall Quality Score").font = cls.BOLD_FONT
-        ws.cell(row=1, column=2, value=f"{dq.get('overall_quality_score', 100)}/100 ({dq.get('overall_grade', 'GOOD')})").font = cls.BOLD_FONT
+    def _populate_data_quality(cls, ws, quality: Dict[str, Any], lang: str):
+        is_tr = lang == "tr"
+        if is_tr:
+            headers = ["Hedef Tablo", "İncelenen Sütun", "İhlal Edilen Kural", "Önem Derecesi", "Ceza Puanı", "İhlal Sayısı", "İhlal Oranı %", "Açıklama / Mesaj"]
+        else:
+            headers = ["Target Table", "Column", "Rule Name", "Severity", "Penalty Pts", "Violation Count", "Violation %", "Message"]
 
-        headers = ["Table Name", "Table Score", "Grade", "Checks Evaluated", "Violations Count", "Scoring Rationale"]
-        for c_idx, h in enumerate(headers, start=1):
-            ws.cell(row=3, column=c_idx, value=h)
-        cls._style_headers(ws, 3, len(headers))
-
-        for r_idx, t in enumerate(dq.get("tables", []), start=4):
-            ws.cell(row=r_idx, column=1, value=t.get("table_name", "")).font = cls.BOLD_FONT
-            ws.cell(row=r_idx, column=2, value=t.get("quality_score", 100)).font = cls.REGULAR_FONT
-            ws.cell(row=r_idx, column=3, value=t.get("quality_grade", "GOOD")).font = cls.REGULAR_FONT
-            ws.cell(row=r_idx, column=4, value=t.get("total_checks", 0)).font = cls.REGULAR_FONT
-            ws.cell(row=r_idx, column=5, value=t.get("violations_count", 0)).font = cls.REGULAR_FONT
-            ws.cell(row=r_idx, column=6, value=t.get("scoring_explanation", "")).font = cls.REGULAR_FONT
-
-        for c in ["A", "B", "C", "D", "E"]:
-            ws.column_dimensions[c].width = 20
-        ws.column_dimensions["F"].width = 60
-
-    @classmethod
-    def _populate_raw_results(cls, ws, report: dict):
-        headers = ["Category", "Source Object", "Status / Severity", "Detail Statement / Value"]
         for c_idx, h in enumerate(headers, start=1):
             ws.cell(row=1, column=c_idx, value=h)
         cls._style_headers(ws, 1, len(headers))
 
-        r_idx = 2
-        for rule in report.get("rule_violations", []):
-            ws.cell(row=r_idx, column=1, value="Business Rule").font = cls.REGULAR_FONT
-            ws.cell(row=r_idx, column=2, value=rule.get("rule_name", "")).font = cls.BOLD_FONT
-            ws.cell(row=r_idx, column=3, value=rule.get("severity", "HIGH")).font = cls.REGULAR_FONT
-            ws.cell(row=r_idx, column=4, value=f"{rule.get('alert_message', '')} ({rule.get('violation_count', 0)} occurrences)").font = cls.REGULAR_FONT
-            r_idx += 1
+        r_cursor = 2
+        for t_item in quality.get("tables", []):
+            for v in t_item.get("violations", []):
+                sev = localize_severity(v.get("severity", "LOW"), lang)
+                rule_name = v.get("rule_name_tr") if is_tr and v.get("rule_name_tr") else v.get("rule_name", "")
+                msg = v.get("message_tr") if is_tr and v.get("message_tr") else v.get("message", "")
 
-        for ins in report.get("insights", []):
-            ws.cell(row=r_idx, column=1, value="Diagnostic Insight").font = cls.REGULAR_FONT
-            ws.cell(row=r_idx, column=2, value=ins.get("table_name", "")).font = cls.BOLD_FONT
-            ws.cell(row=r_idx, column=3, value=ins.get("direction", "")).font = cls.REGULAR_FONT
-            ws.cell(row=r_idx, column=4, value=ins.get("headline", "")).font = cls.REGULAR_FONT
-            r_idx += 1
+                ws.cell(row=r_cursor, column=1, value=v.get("table_name", "")).font = cls.BOLD_FONT
+                ws.cell(row=r_cursor, column=2, value=v.get("column_name", "-")).font = cls.REGULAR_FONT
+                ws.cell(row=r_cursor, column=3, value=rule_name).font = cls.REGULAR_FONT
+                ws.cell(row=r_cursor, column=4, value=sev).font = cls.BOLD_FONT
+                ws.cell(row=r_cursor, column=5, value=v.get("penalty", 0)).font = cls.REGULAR_FONT
+                ws.cell(row=r_cursor, column=6, value=v.get("violation_count", 0)).font = cls.REGULAR_FONT
+                ws.cell(row=r_cursor, column=7, value=f"{v.get('violation_percentage', 0):.1f}%").font = cls.REGULAR_FONT
+                ws.cell(row=r_cursor, column=8, value=msg).font = cls.REGULAR_FONT
+                r_cursor += 1
 
-        ws.column_dimensions["A"].width = 20
-        ws.column_dimensions["B"].width = 25
-        ws.column_dimensions["C"].width = 18
-        ws.column_dimensions["D"].width = 70
+        for c in ["A", "B", "C", "D", "E", "F", "G", "H"]:
+            ws.column_dimensions[c].width = 22
+        ws.column_dimensions["H"].width = 50
+
+    @classmethod
+    def _populate_raw_results(cls, ws, report: Dict[str, Any], lang: str):
+        is_tr = lang == "tr"
+        if is_tr:
+            headers = ["Kural Adı", "Hedef Tablo", "Önem Derecesi", "Koşul İfadesi", "İhlal Sayısı", "Sonuç Durumu", "Tetiklenen Mesaj"]
+        else:
+            headers = ["Rule Name", "Target Table", "Severity", "Condition", "Violations Count", "Status", "Triggered Message"]
+
+        for c_idx, h in enumerate(headers, start=1):
+            ws.cell(row=1, column=c_idx, value=h)
+        cls._style_headers(ws, 1, len(headers))
+
+        for r_idx, r in enumerate(report.get("rule_violations", []), start=2):
+            loc_r = localize_rule(r.get("rule_name", ""), r.get("alert_message", ""), lang)
+            sev = localize_severity(r.get("severity", "HIGH"), lang)
+            status_text = "İHLAL" if is_tr and r.get("status") == "VIOLATION" else r.get("status", "VIOLATION")
+
+            ws.cell(row=r_idx, column=1, value=loc_r["name"]).font = cls.BOLD_FONT
+            ws.cell(row=r_idx, column=2, value=r.get("table_name", "")).font = cls.REGULAR_FONT
+            ws.cell(row=r_idx, column=3, value=sev).font = cls.BOLD_FONT
+            ws.cell(row=r_idx, column=4, value=r.get("condition", "")).font = cls.REGULAR_FONT
+            ws.cell(row=r_idx, column=5, value=r.get("violation_count", 0)).font = cls.REGULAR_FONT
+            ws.cell(row=r_idx, column=6, value=status_text).font = cls.REGULAR_FONT
+            ws.cell(row=r_idx, column=7, value=loc_r["alert_message"]).font = cls.REGULAR_FONT
+
+        for c in ["A", "B", "C", "D", "E", "F", "G"]:
+            ws.column_dimensions[c].width = 24
+        ws.column_dimensions["G"].width = 60

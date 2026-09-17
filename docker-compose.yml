@@ -19,6 +19,7 @@ services:
       - ./app:/app/app
       - ./frontend:/app/frontend
       - ./scripts:/app/scripts
+      - ./tests:/app/tests
       - ./main.py:/app/main.py
       - ./nexuloom.py:/app/nexuloom.py
       - ./udi.py:/app/udi.py

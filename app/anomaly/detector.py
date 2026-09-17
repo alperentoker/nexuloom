@@ -22,6 +22,7 @@ class AnomalyItem:
         score: float,
         explanation: str,
         row_id: Optional[Any] = None,
+        explanation_tr: Optional[str] = None,
     ):
         self.entity = entity
         self.metric = metric
@@ -34,22 +35,29 @@ class AnomalyItem:
         self.score = round(score, 2)
         self.explanation = explanation
         self.row_id = row_id
+        self.explanation_tr = explanation_tr
 
     def to_dict(self) -> Dict[str, Any]:
         sign = "+" if self.deviation_pct > 0 else ""
+        sev_tr = {"LOW": "DÜŞÜK", "MEDIUM": "ORTA", "HIGH": "YÜKSEK", "CRITICAL": "KRİTİK"}.get(self.severity, self.severity)
+        method_tr = {"Z-SCORE": "Z-Skoru", "IQR": "IQR (Çeyrekler Açıklığı)", "ROLLING_WINDOW": "Kayan Pencere", "ISOLATION_FOREST": "İzolasyon Ormanı"}.get(self.method, self.method)
         return {
             "entity": self.entity,
             "metric": self.metric,
             "observed_value": self.observed_value,
             "normal_range": f"{self.normal_range_min} to {self.normal_range_max}",
+            "normal_range_tr": f"{self.normal_range_min} ile {self.normal_range_max} arası",
             "normal_range_min": self.normal_range_min,
             "normal_range_max": self.normal_range_max,
             "deviation_pct": f"{sign}{self.deviation_pct}%",
             "deviation_raw": self.deviation_pct,
             "severity": self.severity,
+            "severity_tr": sev_tr,
             "method": self.method,
+            "method_tr": method_tr,
             "score": self.score,
             "explanation": self.explanation,
+            "explanation_tr": self.explanation_tr or self.explanation,
             "row_id": self.row_id,
         }
 
@@ -107,6 +115,11 @@ class AnomalyDetector:
                     f"Observed value {val:.1f} deviates {sign}{dev_pct:.1f}% from mean {mean:.1f} "
                     f"(Z-Score: {z:.2f}, Severity: {sev}). Normal range: [{normal_min:.1f}, {normal_max:.1f}]."
                 )
+                sev_tr = {"LOW": "DÜŞÜK", "MEDIUM": "ORTA", "HIGH": "YÜKSEK", "CRITICAL": "KRİTİK"}.get(sev, sev)
+                exp_tr = (
+                    f"Gözlemlenen {val:.1f} değeri ortalama {mean:.1f} değerinden %{dev_pct:+.1f} sapma gösteriyor "
+                    f"(Z-Skoru: {z:.2f}, Önem: {sev_tr}). Normal aralık: [{normal_min:.1f}, {normal_max:.1f}]."
+                )
                 anomalies.append(
                     AnomalyItem(
                         entity=ent,
@@ -120,6 +133,7 @@ class AnomalyDetector:
                         score=float(abs(z)),
                         explanation=exp,
                         row_id=idx,
+                        explanation_tr=exp_tr,
                     )
                 )
 
@@ -162,6 +176,11 @@ class AnomalyDetector:
                     f"Observed value {val:.1f} lies {sign}{dev_pct:.1f}% outside IQR fence [{lower_bound:.1f}, {upper_bound:.1f}] "
                     f"(Factor: {iqr_factor:.1f}x IQR, Severity: {sev})."
                 )
+                sev_tr = {"LOW": "DÜŞÜK", "MEDIUM": "ORTA", "HIGH": "YÜKSEK", "CRITICAL": "KRİTİK"}.get(sev, sev)
+                exp_tr = (
+                    f"Gözlemlenen {val:.1f} değeri IQR sınırlarının %{dev_pct:+.1f} dışında [{lower_bound:.1f}, {upper_bound:.1f}] "
+                    f"(Çarpan: {iqr_factor:.1f}x IQR, Önem: {sev_tr})."
+                )
                 anomalies.append(
                     AnomalyItem(
                         entity=ent,
@@ -175,6 +194,7 @@ class AnomalyDetector:
                         score=float(severity_metric),
                         explanation=exp,
                         row_id=idx,
+                        explanation_tr=exp_tr,
                     )
                 )
 
@@ -220,6 +240,11 @@ class AnomalyDetector:
                         f"Observed value {val:.1f} spiked {dev_pct:+0.1f}% above local moving baseline {r_mean:.1f} "
                         f"(Rolling Z-Score: {z:.2f}, Window: {window}, Severity: {sev})."
                     )
+                    sev_tr = {"LOW": "DÜŞÜK", "MEDIUM": "ORTA", "HIGH": "YÜKSEK", "CRITICAL": "KRİTİK"}.get(sev, sev)
+                    exp_tr = (
+                        f"Gözlemlenen {val:.1f} değeri yerel hareketli ortalama {r_mean:.1f} referansından %{dev_pct:+.1f} sıçradı "
+                        f"(Kayan Z-Skoru: {z:.2f}, Pencere: {window}, Önem: {sev_tr})."
+                    )
                     anomalies.append(
                         AnomalyItem(
                             entity=ent,
@@ -233,6 +258,7 @@ class AnomalyDetector:
                             score=float(abs(z)),
                             explanation=exp,
                             row_id=idx,
+                            explanation_tr=exp_tr,
                         )
                     )
 
@@ -275,6 +301,11 @@ class AnomalyDetector:
                     f"Multivariate outlier identified by Isolation Forest (Anomaly Score: {score:.3f}, Severity: {sev}). "
                     f"Observed value: {val:.1f} for {primary_col}."
                 )
+                sev_tr = {"LOW": "DÜŞÜK", "MEDIUM": "ORTA", "HIGH": "YÜKSEK", "CRITICAL": "KRİTİK"}.get(sev, sev)
+                exp_tr = (
+                    f"İzolasyon Ormanı ile çok değişkenli anomali tespit edildi (Anomali Skoru: {score:.3f}, Önem: {sev_tr}). "
+                    f"{primary_col} için gözlemlenen değer: {val:.1f}."
+                )
                 anomalies.append(
                     AnomalyItem(
                         entity=ent,
@@ -288,6 +319,7 @@ class AnomalyDetector:
                         score=float(score * 10),
                         explanation=exp,
                         row_id=idx,
+                        explanation_tr=exp_tr,
                     )
                 )
 

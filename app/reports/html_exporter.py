@@ -2,13 +2,22 @@ import json
 from pathlib import Path
 from typing import Any, Dict, Optional
 from app.core.config import settings
+from app.core.i18n import t, localize_kpi_name, localize_severity, localize_rule
 
 
 class HTMLExporter:
     """Renders high-finish, self-contained executive HTML report with print-optimized CSS."""
 
     @classmethod
-    def export(cls, report_data: Dict[str, Any], output_path: Optional[Path] = None) -> Path:
+    def export(
+        cls,
+        report_data: Dict[str, Any],
+        output_path: Optional[Path] = None,
+        language: Optional[str] = None,
+    ) -> Path:
+        lang = language or report_data.get("language", "tr")
+        is_tr = lang == "tr"
+
         dest = output_path or (
             settings.UDI_REPORTS_DIR / "exports" / f"report_{report_data.get('database_name', 'db')}_{int(hash(report_data.get('generated_at', '')) % 1000000)}.html"
         )
@@ -18,7 +27,6 @@ class HTMLExporter:
         anomalies = report_data.get("anomalies", [])
         quality = report_data.get("quality", {})
         observations = report_data.get("observations", [])
-        trends = report_data.get("trends", [])
         rules = report_data.get("rule_violations", [])
         insights = report_data.get("insights", [])
 
@@ -29,14 +37,16 @@ class HTMLExporter:
             unit = k.get("unit", "")
             growth = k.get("growth_rate_mom_pct")
             growth_badge = ""
+            k_name = localize_kpi_name(k.get("name", "Metric"), lang)
             if growth is not None:
                 arrow = "↑" if growth > 0 else ("↓" if growth < 0 else "→")
                 color = "#10b981" if growth > 0 else "#ef4444"
-                growth_badge = f'<div style="color: {color}; font-weight: 600; font-size: 0.9rem; margin-top: 4px;">{arrow} {abs(growth)}% vs prev period</div>'
+                vs_text = "önceki döneme göre" if is_tr else "vs prev period"
+                growth_badge = f'<div style="color: {color}; font-weight: 600; font-size: 0.9rem; margin-top: 4px;">{arrow} %{abs(growth)} {vs_text}</div>'
 
             kpi_cards_html += f"""
             <div class="kpi-card">
-                <div class="kpi-title">{k.get('name', 'Metric')}</div>
+                <div class="kpi-title">{k_name}</div>
                 <div class="kpi-value">{unit}{val}</div>
                 {growth_badge}
             </div>
@@ -47,9 +57,12 @@ class HTMLExporter:
 
         # Format Anomalies table
         anomaly_rows = ""
-        for a in anomalies[:15]:
-            sev = a.get("severity", "LOW")
-            sev_color = {"CRITICAL": "#ef4444", "HIGH": "#f97316", "MEDIUM": "#eab308", "LOW": "#3b82f6"}.get(sev, "#6b7280")
+        for a in anomalies[:20]:
+            sev_raw = a.get("severity", "LOW")
+            sev = localize_severity(sev_raw, lang)
+            sev_color = {"CRITICAL": "#ef4444", "HIGH": "#f97316", "MEDIUM": "#eab308", "LOW": "#3b82f6"}.get(sev_raw, "#6b7280")
+            exp = a.get("explanation_tr") if is_tr and a.get("explanation_tr") else a.get("explanation", "")
+
             anomaly_rows += f"""
             <tr>
                 <td><strong>{a.get('entity', '')}</strong></td>
@@ -58,33 +71,42 @@ class HTMLExporter:
                 <td>{a.get('normal_range', '')}</td>
                 <td><strong>{a.get('observed_value', '')}</strong></td>
                 <td>{a.get('deviation_pct', '')}</td>
-                <td style="font-size: 0.85rem; color: #4b5563;">{a.get('explanation', '')}</td>
+                <td style="font-size: 0.85rem; color: #4b5563;">{exp}</td>
             </tr>
             """
 
         # Format Rules table
         rules_rows = ""
         for r in rules:
+            loc_r = localize_rule(r.get("rule_name", ""), r.get("alert_message", ""), lang)
+            sev_raw = r.get("severity", "HIGH")
+            sev = localize_severity(sev_raw, lang)
             rules_rows += f"""
             <tr>
-                <td><strong>{r.get('rule_name', '')}</strong></td>
+                <td><strong>{loc_r['name']}</strong></td>
                 <td>{r.get('table_name', '')}</td>
-                <td><span class="badge" style="background-color: #fee2e2; color: #b91c1c;">{r.get('severity', 'HIGH')}</span></td>
-                <td>{r.get('condition', '')}</td>
+                <td><span class="badge" style="background-color: #fee2e2; color: #b91c1c;">{sev}</span></td>
+                <td><code>{r.get('condition', '')}</code></td>
                 <td><strong>{r.get('violation_count', 0)}</strong></td>
-                <td>{r.get('alert_message', '')}</td>
+                <td>{loc_r['alert_message']}</td>
             </tr>
             """
 
         # Format Insights
         insights_html = ""
         for ins in insights:
-            factors_list = "".join([f"<li>{f.get('statement')}</li>" for f in ins.get("contributing_factors", [])])
+            headline = ins.get("headline_tr") if is_tr and ins.get("headline_tr") else ins.get("headline", "")
+            disclaimer = t("causality_disclaimer", lang)
+            factors = []
+            for f in ins.get("contributing_factors", []):
+                st = f.get("statement_tr") if is_tr and f.get("statement_tr") else f.get("statement", "")
+                factors.append(f"<li>{st}</li>")
+            factors_list = "".join(factors)
             insights_html += f"""
             <div class="insight-box">
-                <h4>{ins.get('headline')}</h4>
+                <h4>{headline}</h4>
                 <ul>{factors_list}</ul>
-                <div class="disclaimer">{ins.get('causality_disclaimer', '')}</div>
+                <div class="disclaimer">{disclaimer}</div>
             </div>
             """
 
@@ -96,11 +118,11 @@ class HTMLExporter:
             logo_html = f'<img src="data:image/png;base64,{b64}" alt="Nexuloom" style="width: 40px; height: 40px; border-radius: 6px; object-fit: cover; margin-right: 14px; flex-shrink: 0;" />'
 
         html_content = f"""<!DOCTYPE html>
-<html lang="en">
+<html lang="{lang}">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{report_data.get('title', 'Business Intelligence Report')}</title>
+    <title>{report_data.get('title')}</title>
     <style>
         :root {{
             --primary: #2563eb;
@@ -174,66 +196,79 @@ class HTMLExporter:
         .kpi-card {{
             background: var(--light);
             border: 1px solid var(--border);
+            border-radius: 6px;
             padding: 16px;
-            border-radius: 6px;
         }}
-        .kpi-title {{ font-size: 0.8rem; color: #64748b; font-weight: 500; }}
-        .kpi-value {{ font-size: 1.6rem; font-weight: 700; color: var(--dark); margin: 6px 0; }}
-        .insight-box {{
-            background: #eff6ff;
-            border: 1px solid #bfdbfe;
-            border-radius: 8px;
-            padding: 20px;
-            margin-bottom: 16px;
+        .kpi-title {{
+            font-size: 0.85rem;
+            color: #64748b;
+            font-weight: 500;
         }}
-        .insight-box h4 {{
-            margin: 0 0 10px 0;
-            color: #1e40af;
-        }}
-        .disclaimer {{
-            font-size: 0.8rem;
-            color: #6b7280;
-            font-style: italic;
-            margin-top: 10px;
-        }}
-        .observations-list {{
-            background: var(--light);
-            border: 1px solid var(--border);
-            padding: 20px 20px 20px 40px;
-            border-radius: 6px;
-            line-height: 1.6;
+        .kpi-value {{
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--dark);
+            margin-top: 4px;
         }}
         table {{
             width: 100%;
             border-collapse: collapse;
-            font-size: 0.85rem;
+            font-size: 0.875rem;
             margin-bottom: 24px;
         }}
         th, td {{
-            padding: 10px 12px;
             text-align: left;
+            padding: 10px 14px;
             border-bottom: 1px solid var(--border);
         }}
         th {{
             background: #f8fafc;
             color: #475569;
             font-weight: 600;
+        }}
+        .observations-list {{
+            padding-left: 20px;
+            line-height: 1.6;
+            color: #1e293b;
+            margin-bottom: 24px;
+        }}
+        .insight-box {{
+            background: #f0fdf4;
+            border-left: 4px solid #10b981;
+            padding: 16px 20px;
+            border-radius: 4px;
+            margin-bottom: 16px;
+        }}
+        .insight-box h4 {{
+            margin: 0 0 8px 0;
+            color: #065f46;
+            font-size: 1rem;
+        }}
+        .insight-box ul {{
+            margin: 0;
+            padding-left: 20px;
+            color: #1f2937;
+            font-size: 0.9rem;
+            line-height: 1.5;
+        }}
+        .disclaimer {{
             font-size: 0.75rem;
-            text-transform: uppercase;
-            letter-spacing: 0.05em;
+            color: #6b7280;
+            font-style: italic;
+            margin-top: 8px;
         }}
         footer {{
             margin-top: 40px;
-            border-top: 1px solid var(--border);
             padding-top: 20px;
-            font-size: 0.75rem;
-            color: #94a3b8;
+            border-top: 1px solid var(--border);
             display: flex;
             justify-content: space-between;
+            font-size: 0.75rem;
+            color: #94a3b8;
         }}
         @media print {{
             body {{ background: white; padding: 0; }}
-            .report-container {{ box-shadow: none; border: none; padding: 0; }}
+            .report-container {{ border: none; box-shadow: none; padding: 0; }}
         }}
     </style>
 </head>
@@ -244,82 +279,82 @@ class HTMLExporter:
                 {logo_html}
                 <div>
                     <h1>{report_data.get('title')}</h1>
-                    <div class="meta">Report Period: <strong>{report_data.get('period')}</strong> | Database: <strong>{report_data.get('database_name')}</strong></div>
+                    <div class="meta">{t('report_period', lang)}: <strong>{report_data.get('period')}</strong> | {t('database', lang)}: <strong>{report_data.get('database_name')}</strong></div>
                 </div>
             </div>
             <div style="text-align: right;">
-                <div class="badge" style="background: #e0f2fe; color: #0369a1; border: 1px solid #bae6fd;">Production Quality</div>
-                <div class="meta" style="margin-top: 6px;">Generated: {report_data.get('generated_at')}</div>
+                <div class="badge" style="background: #e0f2fe; color: #0369a1; border: 1px solid #bae6fd;">{t('production_quality', lang)}</div>
+                <div class="meta" style="margin-top: 6px;">{t('generated_at', lang)}: {report_data.get('generated_at')}</div>
             </div>
         </header>
 
-        <div class="section-title">Key Executive Observations</div>
+        <div class="section-title">{t('sec_executive_summary', lang)}</div>
         <ul class="observations-list">
             {observations_html}
         </ul>
 
-        <div class="section-title">Key Performance Indicators (KPIs)</div>
+        <div class="section-title">{t('kpi_summary_title', lang)}</div>
         <div class="kpi-grid">
             {kpi_cards_html}
         </div>
 
-        <div class="section-title">Data Quality Health Summary</div>
-        <div style="background: #f8fafc; border: 1px solid var(--border); padding: 20px; border-radius: 8px; display: flex; justify-content: space-around; align-items: center;">
+        <div class="section-title">{t('sec_data_quality', lang)}</div>
+        <div style="background: #f8fafc; border: 1px solid var(--border); padding: 20px; border-radius: 8px; display: flex; justify-content: space-around; align-items: center; margin-bottom: 24px;">
             <div style="text-align: center;">
-                <div style="font-size: 2.5rem; font-weight: 800; color: #10b981;">{quality.get('overall_quality_score', 100)}/100</div>
-                <div class="meta">Overall Quality Score ({quality.get('overall_grade', 'GOOD')})</div>
+                <div style="font-size: 2.5rem; font-weight: 800; color: #10b981;">{quality.get('overall_quality_score', 100):.0f}/100</div>
+                <div class="meta">{t('overall_quality_score', lang)} ({t('quality_grade', lang)}: {quality.get('overall_grade', 'A')})</div>
             </div>
             <div style="text-align: center;">
                 <div style="font-size: 1.8rem; font-weight: 700; color: #ef4444;">{quality.get('critical_violations', 0)}</div>
-                <div class="meta">Critical Integrity Checks</div>
+                <div class="meta">{t('critical_violations', lang)}</div>
             </div>
             <div style="text-align: center;">
                 <div style="font-size: 1.8rem; font-weight: 700; color: var(--primary);">{quality.get('tables_analyzed', 0)}</div>
-                <div class="meta">Tables Profiled</div>
+                <div class="meta">{t('tables_analyzed', lang)}</div>
             </div>
         </div>
 
-        <div class="section-title">Attribution & Diagnostic Insights</div>
-        {insights_html}
+        <div class="section-title">{t('insights_title', lang)}</div>
+        {insights_html if insights_html else f'<p style="color: #64748b;">{t("obs_all_normal", lang)}</p>'}
 
-        <div class="section-title">Statistical Anomalies Detected</div>
+        <div class="section-title">{t('anom_title', lang)}</div>
         <table>
             <thead>
                 <tr>
-                    <th>Entity</th>
-                    <th>Metric</th>
-                    <th>Severity</th>
-                    <th>Normal Range</th>
-                    <th>Observed</th>
-                    <th>Deviation</th>
-                    <th>Explanation</th>
+                    <th>{t('col_entity', lang)}</th>
+                    <th>{t('col_metric', lang)}</th>
+                    <th>{t('col_severity', lang)}</th>
+                    <th>{t('col_normal_range', lang)}</th>
+                    <th>{t('col_observed', lang)}</th>
+                    <th>{t('col_deviation', lang)}</th>
+                    <th>{t('col_explanation', lang)}</th>
                 </tr>
             </thead>
             <tbody>
-                {anomaly_rows or '<tr><td colspan="7">No critical statistical anomalies detected.</td></tr>'}
+                {anomaly_rows or f'<tr><td colspan="7" style="color: #10b981;">{t("anom_empty", lang)}</td></tr>'}
             </tbody>
         </table>
 
-        <div class="section-title">Business Rule Evaluations</div>
+        <div class="section-title">{t('rules_title', lang)}</div>
         <table>
             <thead>
                 <tr>
-                    <th>Rule Name</th>
-                    <th>Table</th>
-                    <th>Severity</th>
-                    <th>Condition</th>
-                    <th>Violations</th>
-                    <th>Alert Message</th>
+                    <th>{t('col_rule_name', lang)}</th>
+                    <th>{t('col_target_table', lang)}</th>
+                    <th>{t('col_severity', lang)}</th>
+                    <th>{t('col_condition', lang)}</th>
+                    <th>{t('col_violations', lang)}</th>
+                    <th>{t('col_triggered_msg', lang)}</th>
                 </tr>
             </thead>
             <tbody>
-                {rules_rows or '<tr><td colspan="6">All operational business rules satisfied. No violations detected.</td></tr>'}
+                {rules_rows or f'<tr><td colspan="6" style="color: #10b981;">{t("rules_empty", lang)}</td></tr>'}
             </tbody>
         </table>
 
         <footer>
-            <div>Nexuloom Data Intelligence Platform | Deterministic Analytics Engine</div>
-            <div>Report ID: {report_data.get('report_id', '')}</div>
+            <div>{t('footer_note', lang)}</div>
+            <div>ID: {report_data.get('report_id', '')}</div>
         </footer>
     </div>
 </body>

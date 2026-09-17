@@ -68,6 +68,8 @@ class InsightEngine:
 
         direction_verb = "increased" if total_delta > 0 else "decreased"
         headline = f"{metric_col} {direction_verb} {abs(pct_change):.1f}% in the current period (from {p1_val:,.1f} to {p2_val:,.1f})."
+        verb_tr = "artış gösterdi" if total_delta > 0 else "azalış gösterdi"
+        headline_tr = f"{metric_col} metriği güncel dönemde %{abs(pct_change):.1f} {verb_tr} ({p1_val:,.1f} değerinden {p2_val:,.1f} değerine)."
 
         # Determine dimensions to analyze
         if not dimension_cols:
@@ -121,11 +123,18 @@ class InsightEngine:
                         f"{verb} {abs(top_driver['share_of_variance']):.1f}% of the observed net variance "
                         f"(changed from {top_driver['prior_value']:,.1f} to {top_driver['current_value']:,.1f}, {top_driver['percentage_change']:+0.1f}%)."
                     )
+                    verb_tr_factor = "oluşturdu" if top_driver["share_of_variance"] > 0 else "dengeledi"
+                    attribution_factor_tr = (
+                        f"'{dim}' boyutu ({top_driver['dimension_value']}) önemli bir etkendir: "
+                        f"Gözlemlenen net varyansın %{abs(top_driver['share_of_variance']):.1f}'lik kısmını {verb_tr_factor} "
+                        f"({top_driver['prior_value']:,.1f} değerinden {top_driver['current_value']:,.1f} değerine değişti, %{top_driver['percentage_change']:+0.1f})."
+                    )
                     contributing_factors.append({
                         "dimension": dim,
                         "key": top_driver["dimension_value"],
                         "share_of_variance_pct": top_driver["share_of_variance"],
                         "statement": attribution_factor,
+                        "statement_tr": attribution_factor_tr,
                     })
 
         # Record lineage
@@ -146,7 +155,9 @@ class InsightEngine:
             "metric": metric_col,
             "insight_id": insight_id,
             "headline": headline,
+            "headline_tr": headline_tr,
             "direction": direction_verb,
+            "direction_tr": "artış" if total_delta > 0 else "azalış",
             "percentage_change": round(pct_change, 2),
             "prior_period_total": round(p1_val, 2),
             "current_period_total": round(p2_val, 2),
@@ -154,4 +165,5 @@ class InsightEngine:
             "contributing_factors": contributing_factors,
             "dimension_breakdowns": dimension_breakdowns,
             "causality_disclaimer": "Contributing factors denote correlational variance attribution; they do not imply sole direct causality.",
+            "causality_disclaimer_tr": "Katkıda bulunan faktörler korelasyonel varyans dağılımını ifade eder; tek başına doğrudan nedensellik anlamına gelmez.",
         }

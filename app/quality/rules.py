@@ -18,29 +18,37 @@ class QualityCheckResult:
         violation_count: int = 0,
         violation_percentage: float = 0.0,
         sample_violations: Optional[List[Any]] = None,
+        rule_name_tr: Optional[str] = None,
+        message_tr: Optional[str] = None,
     ):
         self.rule_id = rule_id
         self.rule_name = rule_name
+        self.rule_name_tr = rule_name_tr
         self.table_name = table_name
         self.column_name = column_name
         self.passed = passed
         self.severity = severity
         self.penalty = penalty if not passed else 0.0
         self.message = message
+        self.message_tr = message_tr
         self.violation_count = violation_count
         self.violation_percentage = violation_percentage
         self.sample_violations = sample_violations or []
 
     def to_dict(self) -> Dict[str, Any]:
+        sev_tr = {"CRITICAL": "KRİTİK", "HIGH": "YÜKSEK", "MEDIUM": "ORTA", "LOW": "DÜŞÜK"}.get(self.severity, self.severity)
         return {
             "rule_id": self.rule_id,
             "rule_name": self.rule_name,
+            "rule_name_tr": self.rule_name_tr or self.rule_name,
             "table_name": self.table_name,
             "column_name": self.column_name,
             "passed": self.passed,
             "severity": self.severity,
+            "severity_tr": sev_tr,
             "penalty": round(self.penalty, 2),
             "message": self.message,
+            "message_tr": self.message_tr or self.message,
             "violation_count": self.violation_count,
             "violation_percentage": round(self.violation_percentage, 2),
             "sample_violations": self.sample_violations[:5],
@@ -85,17 +93,21 @@ class NullCheckRule(BaseQualityRule):
                 severity = "CRITICAL" if is_pk else ("HIGH" if null_pct > 20 else "MEDIUM")
                 penalty = 15.0 if is_pk else (8.0 if null_pct > 20 else 3.0)
                 msg = f"⚠ {null_pct:.1f}% NULL values ({null_count} rows)"
+                msg_tr = f"⚠ %{null_pct:.1f} NULL değer ({null_count} satır)"
                 if is_pk:
                     msg = f"CRITICAL: Primary key has {null_count} NULL values!"
+                    msg_tr = f"KRİTİK: Birincil anahtarda {null_count} adet NULL değer bulundu!"
                 results.append(QualityCheckResult(
                     rule_id=self.rule_id,
                     rule_name=self.rule_name,
+                    rule_name_tr="Boş Değer Kontrolü",
                     table_name=table_name,
                     column_name=col,
                     passed=False,
                     severity=severity,
                     penalty=penalty,
                     message=msg,
+                    message_tr=msg_tr,
                     violation_count=null_count,
                     violation_percentage=null_pct,
                 ))
@@ -103,12 +115,14 @@ class NullCheckRule(BaseQualityRule):
                 results.append(QualityCheckResult(
                     rule_id=self.rule_id,
                     rule_name=self.rule_name,
+                    rule_name_tr="Boş Değer Kontrolü",
                     table_name=table_name,
                     column_name=col,
                     passed=True,
                     severity="LOW",
                     penalty=0.0,
                     message="✓ No NULL values in primary key",
+                    message_tr="✓ Birincil anahtarda NULL değer yok",
                 ))
         return results
 
@@ -133,12 +147,14 @@ class UniquenessCheckRule(BaseQualityRule):
                         results.append(QualityCheckResult(
                             rule_id=self.rule_id,
                             rule_name=self.rule_name,
+                            rule_name_tr="Benzersizlik & Mükerrer Kontrolü",
                             table_name=table_name,
                             column_name=pk,
                             passed=False,
                             severity="CRITICAL",
                             penalty=20.0,
                             message=f"CRITICAL: Primary key has {dupes} duplicate values ({dupe_pct:.1f}%)",
+                            message_tr=f"KRİTİK: Birincil anahtarda {dupes} mükerrer değer bulundu (%{dupe_pct:.1f})",
                             violation_count=int(dupes),
                             violation_percentage=dupe_pct,
                         ))
@@ -146,12 +162,14 @@ class UniquenessCheckRule(BaseQualityRule):
                         results.append(QualityCheckResult(
                             rule_id=self.rule_id,
                             rule_name=self.rule_name,
+                            rule_name_tr="Benzersizlik & Mükerrer Kontrolü",
                             table_name=table_name,
                             column_name=pk,
                             passed=True,
                             severity="LOW",
                             penalty=0.0,
                             message="✓ No duplicates in primary key",
+                            message_tr="✓ Birincil anahtarda mükerrer kayıt yok",
                         ))
         return results
 
@@ -180,12 +198,14 @@ class NonNegativeMetricRule(BaseQualityRule):
                     results.append(QualityCheckResult(
                         rule_id=self.rule_id,
                         rule_name=self.rule_name,
+                        rule_name_tr="Pozitif Metrik Aralık Kontrolü",
                         table_name=table_name,
                         column_name=col,
                         passed=False,
                         severity="HIGH" if neg_pct > 1.0 else "MEDIUM",
                         penalty=10.0 if neg_pct > 1.0 else 5.0,
                         message=f"⚠ {neg_pct:.1f}% negative values found in positive metric ({neg_count} rows)",
+                        message_tr=f"⚠ Pozitif olması gereken sütunda {neg_count} negatif değer bulundu (%{neg_pct:.1f}, {neg_count} satır)",
                         violation_count=neg_count,
                         violation_percentage=neg_pct,
                         sample_violations=list(negatives.head(5)),
@@ -221,12 +241,14 @@ class OutlierQualityRule(BaseQualityRule):
                     results.append(QualityCheckResult(
                         rule_id=self.rule_id,
                         rule_name=self.rule_name,
+                        rule_name_tr="Aşırı Aykırı Değer Kontrolü",
                         table_name=table_name,
                         column_name=col,
                         passed=False,
                         severity="MEDIUM" if pct < 2.0 else "HIGH",
                         penalty=4.0 if pct < 2.0 else 8.0,
                         message=f"⚠ {extreme_count} extreme outliers detected (>3x IQR)",
+                        message_tr=f"⚠ {extreme_count} aşırı aykırı değer tespit edildi (>3x IQR)",
                         violation_count=extreme_count,
                         violation_percentage=pct,
                         sample_violations=[round(float(v), 2) for v in extreme.head(5)],
@@ -258,12 +280,14 @@ class DateValidityRule(BaseQualityRule):
                     results.append(QualityCheckResult(
                         rule_id=self.rule_id,
                         rule_name=self.rule_name,
+                        rule_name_tr="Tarih Format ve Geçerlilik Kontrolü",
                         table_name=table_name,
                         column_name=col,
                         passed=False,
                         severity="HIGH",
                         penalty=10.0,
                         message=f"⚠ {invalid_dates} invalid or unparseable dates ({inv_pct:.1f}%)",
+                        message_tr=f"⚠ {invalid_dates} geçersiz veya ayrıştırılamayan tarih kaydı ({inv_pct:.1f}%)",
                         violation_count=invalid_dates,
                         violation_percentage=inv_pct,
                     ))

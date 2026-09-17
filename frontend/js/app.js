@@ -1,7 +1,17 @@
 // Nexuloom Data Intelligence Platform - Frontend Application Logic
 import { api } from './api.js';
 import { charts } from './charts.js';
-import { getLanguage, setLanguage, t, applyTranslations } from './i18n.js';
+import {
+  getLanguage,
+  setLanguage,
+  t,
+  applyTranslations,
+  localizeKpiName,
+  localizeRuleName,
+  localizeSeverity,
+  localizeTrendDirection,
+  localizeCategory,
+} from './i18n.js';
 
 // Global State
 let currentDb = '';
@@ -12,6 +22,11 @@ window.charts = charts;
 window.getLanguage = getLanguage;
 window.setLanguage = setLanguage;
 window.t = t;
+window.localizeKpiName = localizeKpiName;
+window.localizeRuleName = localizeRuleName;
+window.localizeSeverity = localizeSeverity;
+window.localizeTrendDirection = localizeTrendDirection;
+window.localizeCategory = localizeCategory;
 
 // 1. Theme Management (Light / Dark)
 window.toggleTheme = function() {
@@ -113,15 +128,19 @@ window.scanLocalDatabases = async function() {
 
 // 5. Quick Report Action
 window.quickReport = async function() {
+  const isTr = getLanguage() === 'tr';
   if (!currentDb) {
-    alert(getLanguage() === 'tr' ? 'Lütfen önce yukarıdaki kutudan bir veritabanı seçin!' : 'Please select a database from the dropdown first!');
+    alert(isTr ? 'Lütfen önce yukarıdaki kutudan bir veritabanı seçin!' : 'Please select a database from the dropdown first!');
     return;
   }
   const btn = document.getElementById('btnQuickReport');
-  if (btn) btn.textContent = getLanguage() === 'tr' ? '⏳ Hazırlanıyor...' : '⏳ Generating...';
+  if (btn) btn.textContent = isTr ? '⏳ Hazırlanıyor...' : '⏳ Generating...';
   try {
-    const res = await api.generateReport({ database_name: currentDb, export_format: 'ALL' });
-    const isTr = getLanguage() === 'tr';
+    const res = await api.generateReport({
+      database_name: currentDb,
+      export_format: 'ALL',
+      language: getLanguage(),
+    });
     const msg = isTr
       ? `Hızlı Aylık Rapor başarıyla oluşturuldu!\nRapor Kimliği: ${res.report_id}\nFormatlar: PDF, Excel, HTML, CSV, JSON`
       : `Quick Report generated successfully!\nReport ID: ${res.report_id}\nFormats: PDF, Excel, HTML, CSV, JSON`;
@@ -144,6 +163,15 @@ window.closeAddDbModal = function() {
 };
 
 window.openReportModal = function() {
+  const isTr = getLanguage() === 'tr';
+  const titleInput = document.getElementById('repTitleInput');
+  const periodInput = document.getElementById('repPeriodInput');
+  if (titleInput) {
+    titleInput.value = isTr ? 'Aylık Veri Zekâsı ve Yönetici Raporu' : 'Monthly Business Intelligence & Executive Report';
+  }
+  if (periodInput) {
+    periodInput.value = isTr ? 'Eylül 2026' : 'September 2026';
+  }
   document.getElementById('modalReport')?.classList.add('active');
 };
 
@@ -185,8 +213,11 @@ window.submitAddDb = async function() {
 };
 
 window.submitGenerateReport = async function() {
-  const title = document.getElementById('repTitleInput')?.value || 'Executive Report';
-  const period = document.getElementById('repPeriodInput')?.value || 'Current Period';
+  const isTr = getLanguage() === 'tr';
+  const defaultTitle = isTr ? 'Aylık Veri Zekâsı ve Yönetici Raporu' : 'Monthly Business Intelligence & Executive Report';
+  const defaultPeriod = isTr ? 'Eylül 2026' : 'September 2026';
+  const title = document.getElementById('repTitleInput')?.value || defaultTitle;
+  const period = document.getElementById('repPeriodInput')?.value || defaultPeriod;
   const fmt = document.getElementById('repFormatSelect')?.value || 'ALL';
 
   try {
@@ -195,9 +226,10 @@ window.submitGenerateReport = async function() {
       title,
       period,
       export_format: fmt,
+      language: getLanguage(),
     });
     window.closeReportModal();
-    alert(getLanguage() === 'tr' ? `Rapor oluşturuldu!\nKimlik: ${res.report_id}` : `Report generated!\nID: ${res.report_id}`);
+    alert(isTr ? `Rapor oluşturuldu!\nKimlik: ${res.report_id}` : `Report generated!\nID: ${res.report_id}`);
     await loadReportsLibrary();
   } catch (e) {
     alert(`Report generation failed: ${e.message}`);
@@ -267,18 +299,24 @@ window.runAnomalyScan = async function() {
       return;
     }
 
+    const isTr = getLanguage() === 'tr';
     res.anomalies.slice(0, 30).forEach((a) => {
       const tr = document.createElement('tr');
       const sevClass = a.severity === 'CRITICAL' ? 'badge-critical' : (a.severity === 'HIGH' ? 'badge-high' : 'badge-low');
+      const sevLabel = isTr ? (a.severity_tr || localizeSeverity(a.severity)) : a.severity;
+      const methodLabel = isTr ? (a.method_tr || a.method) : a.method;
+      const explanationText = isTr ? (a.explanation_tr || a.explanation) : a.explanation;
+      const normalRangeText = isTr ? (a.normal_range_tr || `${a.normal_range_min} ile ${a.normal_range_max} arası`) : a.normal_range;
+
       tr.innerHTML = `
         <td><strong>${a.entity}</strong></td>
         <td>${a.metric}</td>
-        <td><span class="badge ${sevClass}">${a.severity}</span></td>
+        <td><span class="badge ${sevClass}">${sevLabel}</span></td>
         <td><strong>${a.observed_value}</strong></td>
-        <td>${a.normal_range}</td>
+        <td>${normalRangeText}</td>
         <td>${a.deviation_pct}</td>
-        <td><span class="badge badge-medium">${a.method}</span></td>
-        <td style="font-size: 0.8rem; color: var(--text-muted);">${a.explanation}</td>
+        <td><span class="badge badge-medium">${methodLabel}</span></td>
+        <td style="font-size: 0.8rem; color: var(--text-muted);">${explanationText}</td>
       `;
       tbody.appendChild(tr);
     });
@@ -574,7 +612,7 @@ async function loadOverview() {
           const card = document.createElement('div');
           card.className = 'card';
           card.innerHTML = `
-            <div class="card-title">${evalRes.name}</div>
+            <div class="card-title">${localizeKpiName(evalRes.name)}</div>
             <div class="metric-number">${curr}</div>
             <div class="metric-trend ${trendClass}">${growthText}</div>
           `;
@@ -603,7 +641,7 @@ async function loadOverview() {
         'overviewRevenueChart',
         ts.map((t) => t.period),
         ts.map((t) => t.value),
-        evaluatedKpis[0].name,
+        localizeKpiName(evaluatedKpis[0].name),
         '#6366f1'
       );
     } else {
@@ -628,18 +666,32 @@ async function loadOverview() {
 
     // Render Autonomous Executive Observations in Selected Language
     if (obsList) {
-      if (isTr) {
-        obsList.innerHTML = `
-          <p>• <strong>Aktif Boru Hattı:</strong> <code>${currentDb}</code> veritabanı çevrimiçi, ${dq.tables_analyzed || 0} tablo başarıyla denetlendi.</p>
-          <p>• <strong>Veri Kalitesi Sağlığı:</strong> <strong>${score}/100</strong> skoru (Derece: ${dq.overall_grade || 'İYİ'}) ve ${dq.critical_violations || 0} kritik bütünlük uyarısı tespit edildi.</p>
-          <p>• <strong>Deterministik Doğrulama:</strong> Tüm ilişkisel şemalar, istatistiksel profiller, anomaliler ve iş kuralları yapay zeka halüsinasyonu olmaksızın matematiksel olarak çalıştırılmıştır.</p>
-        `;
-      } else {
-        obsList.innerHTML = `
-          <p>• <strong>Active Pipeline:</strong> Database <code>${currentDb}</code> is online with ${dq.tables_analyzed || 0} tables audited.</p>
-          <p>• <strong>Data Quality Health:</strong> Scored <strong>${score}/100</strong> (Grade ${dq.overall_grade || 'GOOD'}) with ${dq.critical_violations || 0} critical integrity warnings.</p>
-          <p>• <strong>Deterministic Engine:</strong> All relational catalogs, column profiling, anomalies, and business rules executed mathematically without LLM hallucination.</p>
-        `;
+      try {
+        const obsRes = await fetch(`/api/reports/observations/${encodeURIComponent(currentDb)}?language=${getLanguage()}`);
+        if (obsRes.ok) {
+          const obsData = await obsRes.json();
+          if (obsData.observations && obsData.observations.length > 0) {
+            obsList.innerHTML = obsData.observations.map((o) => `<p>• ${o}</p>`).join('');
+          } else {
+            throw new Error('No observations returned');
+          }
+        } else {
+          throw new Error('Observations endpoint status error');
+        }
+      } catch (obsErr) {
+        if (isTr) {
+          obsList.innerHTML = `
+            <p>• <strong>Aktif Boru Hattı:</strong> <code>${currentDb}</code> veritabanı çevrimiçi, ${dq.tables_analyzed || 0} tablo başarıyla denetlendi.</p>
+            <p>• <strong>Veri Kalitesi Sağlığı:</strong> <strong>${score}/100</strong> skoru (Derece: ${dq.overall_grade || 'İYİ'}) ve ${dq.critical_violations || 0} kritik bütünlük uyarısı tespit edildi.</p>
+            <p>• <strong>Deterministik Doğrulama:</strong> Tüm ilişkisel şemalar, istatistiksel profiller, anomaliler ve iş kuralları yapay zeka halüsinasyonu olmaksızın matematiksel olarak çalıştırılmıştır.</p>
+          `;
+        } else {
+          obsList.innerHTML = `
+            <p>• <strong>Active Pipeline:</strong> Database <code>${currentDb}</code> is online with ${dq.tables_analyzed || 0} tables audited.</p>
+            <p>• <strong>Data Quality Health:</strong> Scored <strong>${score}/100</strong> (Grade ${dq.overall_grade || 'GOOD'}) with ${dq.critical_violations || 0} critical integrity warnings.</p>
+            <p>• <strong>Deterministic Engine:</strong> All relational catalogs, column profiling, anomalies, and business rules executed mathematically without LLM hallucination.</p>
+          `;
+        }
       }
     }
   } catch (err) {
@@ -725,11 +777,14 @@ async function loadSchemaAndRelationships() {
       } else {
         rels.edges.forEach((e) => {
           const tr = document.createElement('tr');
+          const relTypeBadge = e.relationship_type === 'EXPLICIT_FK' ? 'badge-medium' : 'badge-low';
+          const relTypeLabel = isTr ? (e.relationship_type === 'EXPLICIT_FK' ? 'Açık FK' : 'Çıkarımsal FK') : e.relationship_type;
+          const relDesc = isTr ? (e.label === 'Foreign Key Reference' ? 'Yabancı Anahtar Referansı' : e.label) : e.label;
           tr.innerHTML = `
             <td><strong>${e.source}</strong>.${e.source_column}</td>
             <td><strong>${e.target}</strong>.${e.target_column}</td>
-            <td><span class="badge ${e.relationship_type === 'EXPLICIT_FK' ? 'badge-medium' : 'badge-low'}">${e.relationship_type}</span></td>
-            <td>${e.label}</td>
+            <td><span class="badge ${relTypeBadge}">${relTypeLabel}</span></td>
+            <td>${relDesc}</td>
           `;
           relTbody.appendChild(tr);
         });
@@ -758,10 +813,11 @@ async function loadProfiling() {
     for (const [colName, p] of Object.entries(res.columns || {})) {
       const tr = document.createElement('tr');
       const cat = p.type_category || 'STRING';
+      const catLabel = isTr ? localizeCategory(cat) : cat;
 
       let statsDetail = '-';
       if (cat === 'NUMERIC') {
-        statsDetail = `std=${p.std_dev || 0}, iqr=${p.iqr || 0}`;
+        statsDetail = isTr ? `Std: ${p.std_dev || 0}, IQR: ${p.iqr || 0}` : `std=${p.std_dev || 0}, iqr=${p.iqr || 0}`;
         if (!firstNumDist && p.distribution_histogram?.length > 0) {
           firstNumDist = p.distribution_histogram;
           firstNumCol = colName;
@@ -770,13 +826,13 @@ async function loadProfiling() {
 
       let topValText = '-';
       if (p.most_frequent_values?.length > 0) {
-        topValText = p.most_frequent_values.slice(0, 2).map((v) => `${v.value} (${v.percentage}%)`).join(', ');
+        topValText = p.most_frequent_values.slice(0, 2).map((v) => `${v.value} (%${v.percentage})`).join(', ');
       }
 
       tr.innerHTML = `
         <td><strong>${colName}</strong></td>
-        <td><span class="badge badge-low">${cat}</span></td>
-        <td>${p.null_percentage}% (${p.null_count})</td>
+        <td><span class="badge badge-low">${catLabel}</span></td>
+        <td>%${p.null_percentage} (${p.null_count})</td>
         <td>${p.unique_count?.toLocaleString()}</td>
         <td>${p.min !== undefined ? `${p.min} / ${p.max}` : '-'}</td>
         <td>${p.mean !== undefined ? `${p.mean} / ${p.median}` : '-'}</td>
@@ -831,13 +887,18 @@ async function loadQuality() {
         violationCount++;
         const tr = document.createElement('tr');
         const sevClass = v.severity === 'CRITICAL' ? 'badge-critical' : (v.severity === 'HIGH' ? 'badge-high' : 'badge-low');
+        const sevLabel = isTr ? (v.severity_tr || localizeSeverity(v.severity)) : v.severity;
+        const ruleLabel = isTr ? (v.rule_name_tr || v.rule_name) : v.rule_name;
+        const penaltyLabel = isTr ? `-${v.penalty} puan` : `-${v.penalty} pts`;
+        const msgLabel = isTr ? (v.message_tr || v.message) : v.message;
+
         tr.innerHTML = `
           <td><strong>${v.table_name}</strong></td>
           <td>${v.column_name || '-'}</td>
-          <td><span class="badge ${sevClass}">${v.severity}</span></td>
-          <td>${v.rule_name}</td>
-          <td>-${v.penalty} pts</td>
-          <td>${v.message}</td>
+          <td><span class="badge ${sevClass}">${sevLabel}</span></td>
+          <td>${ruleLabel}</td>
+          <td>${penaltyLabel}</td>
+          <td>${msgLabel}</td>
         `;
         tbody.appendChild(tr);
       }
@@ -878,10 +939,12 @@ async function loadKPIs() {
         const card = document.createElement('div');
         card.className = 'card';
         card.style.cursor = 'pointer';
+        const kpiTitle = isTr ? localizeKpiName(res.name) : res.name;
+        const growthBadge = growth !== null ? (isTr ? `${sign}%${Math.abs(growth)} MoM` : `${sign}${growth}% MoM`) : (isTr ? 'Baz Değer' : 'Base Value');
         card.innerHTML = `
-          <div class="card-title">${res.name}</div>
+          <div class="card-title">${kpiTitle}</div>
           <div class="metric-number">${curr}</div>
-          <div class="metric-trend ${trendClass}">${growth !== null ? `${sign}${growth}% MoM` : (isTr ? 'Baz Değer' : 'Base Value')}</div>
+          <div class="metric-trend ${trendClass}">${growthBadge}</div>
           <div style="font-size: 0.75rem; color: var(--text-dim); margin-top: 8px;">${res.formula}</div>
         `;
 
@@ -909,13 +972,14 @@ async function loadKPIs() {
 
 function renderKpiChart(kpiRes) {
   const isTr = getLanguage() === 'tr';
+  const kpiTitle = isTr ? localizeKpiName(kpiRes.name) : kpiRes.name;
   const title = document.getElementById('kpiTimeSeriesTitle');
-  if (title) title.textContent = `${isTr ? 'Aylık Tarihsel Seri' : 'Historical Monthly Series'}: ${kpiRes.name}`;
+  if (title) title.textContent = `${isTr ? 'Aylık Tarihsel Seri' : 'Historical Monthly Series'}: ${kpiTitle}`;
   charts.renderLine(
     'kpiTimeSeriesChart',
     kpiRes.time_series.map((t) => t.period),
     kpiRes.time_series.map((t) => t.value),
-    kpiRes.name,
+    kpiTitle,
     '#6366f1'
   );
 }
@@ -942,15 +1006,18 @@ async function loadTrends() {
         if (t.trend_direction !== 'INSUFFICIENT_DATA') {
           const tr = document.createElement('tr');
           const dirBadge = t.trend_direction === 'UPWARD' ? 'badge-success' : (t.trend_direction === 'DOWNWARD' ? 'badge-critical' : 'badge-low');
+          const metricLabel = isTr ? (t.metric_name_tr || localizeKpiName(t.metric_name)) : t.metric_name;
+          const dirLabel = isTr ? (t.trend_direction_tr || localizeTrendDirection(t.trend_direction)) : t.trend_direction;
+          const explLabel = isTr ? (t.explanation_tr || t.explanation) : t.explanation;
 
           tr.innerHTML = `
-            <td><strong>${t.metric_name}</strong></td>
-            <td><span class="badge ${dirBadge}">${t.trend_direction}</span></td>
+            <td><strong>${metricLabel}</strong></td>
+            <td><span class="badge ${dirBadge}">${dirLabel}</span></td>
             <td>${(t.total_growth_percentage > 0 ? '+' : '') + Number(t.total_growth_percentage || 0).toFixed(1)}%</td>
             <td>${t.linear_slope}</td>
             <td>${t.r_squared}</td>
             <td>${t.sudden_changes?.length || 0} ${isTr ? 'tespit' : 'detected'}</td>
-            <td style="font-size: 0.82rem; color: var(--text-muted);">${t.explanation}</td>
+            <td style="font-size: 0.82rem; color: var(--text-muted);">${explLabel}</td>
           `;
           if (tbody) tbody.appendChild(tr);
 
@@ -962,11 +1029,12 @@ async function loadTrends() {
     }
 
     if (firstTrend) {
+      const metricLabel = isTr ? (firstTrend.metric_name_tr || localizeKpiName(firstTrend.metric_name)) : firstTrend.metric_name;
       charts.renderLine(
         'trendDetailChart',
         firstTrend.moving_average_series.map((s) => s.period),
         firstTrend.moving_average_series.map((s) => s.moving_avg),
-        `${isTr ? 'Hareketli Ortalama' : 'Moving Average'}: ${firstTrend.metric_name}`,
+        `${isTr ? 'Hareketli Ortalama' : 'Moving Average'}: ${metricLabel}`,
         '#06b6d4'
       );
     }
@@ -1025,13 +1093,15 @@ async function loadBusinessRules() {
     rules.forEach((r) => {
       const tr = document.createElement('tr');
       const sevClass = r.severity === 'CRITICAL' ? 'badge-critical' : (r.severity === 'HIGH' ? 'badge-high' : 'badge-low');
+      const sevLabel = isTr ? (r.severity_tr || localizeSeverity(r.severity)) : r.severity;
+      const ruleName = isTr ? (r.name_tr || localizeRuleName(r.name)) : r.name;
       const statusText = r.last_violations_count > 0 ? (isTr ? 'İHLAL' : 'VIOLATION') : (isTr ? 'GEÇTİ' : 'PASSED');
       const statusClass = r.last_violations_count > 0 ? 'badge-critical' : 'badge-success';
 
       tr.innerHTML = `
-        <td><strong>${r.name}</strong></td>
+        <td><strong>${ruleName}</strong></td>
         <td>${r.table_name}</td>
-        <td><span class="badge ${sevClass}">${r.severity}</span></td>
+        <td><span class="badge ${sevClass}">${sevLabel}</span></td>
         <td><code>${r.condition_sql}</code></td>
         <td><span class="badge ${statusClass}">${statusText}</span></td>
         <td><strong>${r.last_violations_count || 0}</strong></td>
@@ -1068,10 +1138,13 @@ async function loadInsights() {
       container.innerHTML = '';
       const headlineCard = document.createElement('div');
       headlineCard.className = 'card';
+      const headlineText = isTr ? (res.headline_tr || res.headline) : res.headline;
+      const disclaimerText = isTr ? (res.causality_disclaimer_tr || res.causality_disclaimer) : res.causality_disclaimer;
+
       headlineCard.innerHTML = `
-        <div style="font-size: 1.1rem; font-weight: 700; color: var(--text-main); margin-bottom: 8px;">${res.headline}</div>
+        <div style="font-size: 1.1rem; font-weight: 700; color: var(--text-main); margin-bottom: 8px;">${headlineText}</div>
         <p style="color: var(--text-muted); font-size: 0.9rem;">${isTr ? 'Önceki Dönem' : 'Prior Period'}: ₺${res.prior_period_total?.toLocaleString()} | ${isTr ? 'Cari Dönem' : 'Current Period'}: ₺${res.current_period_total?.toLocaleString()}</p>
-        <div style="margin-top: 14px; font-style: italic; font-size: 0.8rem; color: var(--text-dim);">${res.causality_disclaimer}</div>
+        <div style="margin-top: 14px; font-style: italic; font-size: 0.8rem; color: var(--text-dim);">${disclaimerText}</div>
       `;
       container.appendChild(headlineCard);
 
@@ -1079,9 +1152,10 @@ async function loadInsights() {
         const fCard = document.createElement('div');
         fCard.className = 'card';
         fCard.style.borderLeft = '4px solid var(--accent-secondary)';
+        const factorText = isTr ? (f.statement_tr || f.statement) : f.statement;
         fCard.innerHTML = `
           <div style="font-weight: 600; color: var(--accent-secondary); margin-bottom: 4px;">${isTr ? 'Katkı Faktörü' : 'Contributing Factor'} (${f.dimension}: ${f.key})</div>
-          <p style="font-size: 0.92rem; color: var(--text-main);">${f.statement}</p>
+          <p style="font-size: 0.92rem; color: var(--text-main);">${factorText}</p>
         `;
         container.appendChild(fCard);
       });
@@ -1201,15 +1275,17 @@ async function loadAuditAndLineage() {
 
   try {
     const auditData = await api.getAuditLogs(50);
+    const isTr = getLanguage() === 'tr';
     if (auditTbody) {
       auditTbody.innerHTML = '';
       (auditData.logs || []).forEach((l) => {
         const tr = document.createElement('tr');
         const badge = l.status === 'SUCCESS' ? 'badge-success' : (l.status === 'BLOCKED' ? 'badge-critical' : 'badge-high');
+        const statusLabel = isTr ? (l.status === 'SUCCESS' ? 'BAŞARILI' : (l.status === 'BLOCKED' ? 'ENGELLENDİ' : (l.status === 'FAILED' ? 'BAŞARISIZ' : l.status))) : l.status;
         tr.innerHTML = `
           <td>${l.timestamp.slice(0, 19).replace('T', ' ')}</td>
           <td><strong>${l.action}</strong></td>
-          <td><span class="badge ${badge}">${l.status}</span></td>
+          <td><span class="badge ${badge}">${statusLabel}</span></td>
           <td>${l.target || l.database_name || '-'}</td>
           <td>${l.execution_time_ms} ms</td>
           <td style="font-size: 0.8rem; font-family: monospace;">${l.query_text || JSON.stringify(l.details || {})}</td>
@@ -1223,9 +1299,18 @@ async function loadAuditAndLineage() {
       lineageTbody.innerHTML = '';
       (lineageGraph.nodes || []).slice(0, 30).forEach((n) => {
         const tr = document.createElement('tr');
+        const typeMapTr = {
+          'DATABASE': 'VERİTABANI',
+          'TABLE': 'TABLO',
+          'KPI': 'METRİK (KPI)',
+          'REPORT': 'RAPOR',
+          'INSIGHT': 'İÇGÖRÜ',
+          'QUERY': 'SORGU'
+        };
+        const typeLabel = isTr ? (typeMapTr[n.type] || n.type) : n.type;
         tr.innerHTML = `
           <td><code>${n.id}</code></td>
-          <td><span class="badge badge-low">${n.type}</span></td>
+          <td><span class="badge badge-low">${typeLabel}</span></td>
           <td>${n.label}</td>
           <td>${n.source_db || '-'}.${n.source_table || '-'}</td>
           <td style="font-size: 0.75rem; font-family: monospace;">${n.source_query || '-'}</td>

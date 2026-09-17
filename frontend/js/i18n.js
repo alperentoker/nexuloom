@@ -492,3 +492,71 @@ export function applyTranslations() {
       : (currentLang === 'tr' ? 'Koyu Tema' : 'Dark Mode');
   }
 }
+
+export const KPI_TRANSLATIONS = {
+  "Total Revenue": { tr: "Toplam Gelir", en: "Total Revenue" },
+  "Total Order Volume": { tr: "Toplam Sipariş Hacmi", en: "Total Order Volume" },
+  "Average Order Value": { tr: "Ortalama Sipariş Tutarı", en: "Average Order Value" },
+  "Total Defect Rate": { tr: "Toplam Hata Oranı", en: "Total Defect Rate" },
+  "Total Incurred Expenses": { tr: "Toplam İşletme Giderleri", en: "Total Incurred Expenses" },
+};
+
+export const RULE_TRANSLATIONS = {
+  "Low Inventory Alert": { tr: "Düşük Stok Seviyesi Uyarısı", en: "Low Inventory Alert" },
+  "Critical Machine Overheating": { tr: "Kritik Makine Aşırı Isınması", en: "Critical Machine Overheating" },
+  "Abnormal High Batch Scrap": { tr: "Yüksek Parti Fire Oranı Alarmı", en: "Abnormal High Batch Scrap" },
+};
+
+export function localizeKpiName(name) {
+  if (KPI_TRANSLATIONS[name]) {
+    return KPI_TRANSLATIONS[name][currentLang] || name;
+  }
+  return name;
+}
+
+export function localizeRuleName(name) {
+  if (RULE_TRANSLATIONS[name]) {
+    return RULE_TRANSLATIONS[name][currentLang] || name;
+  }
+  return name;
+}
+
+export function localizeSeverity(sev) {
+  if (currentLang === 'tr') {
+    const map = {
+      'CRITICAL': 'KRİTİK',
+      'HIGH': 'YÜKSEK',
+      'MEDIUM': 'ORTA',
+      'LOW': 'DÜŞÜK'
+    };
+    return map[(sev || '').toUpperCase()] || sev;
+  }
+  return (sev || '').toUpperCase();
+}
+
+export function localizeTrendDirection(dir) {
+  if (currentLang === 'tr') {
+    const map = {
+      'UPWARD': 'YUKARI YÖNLÜ',
+      'DOWNWARD': 'AŞAĞI YÖNLÜ',
+      'STABLE': 'DURAĞAN',
+      'INSUFFICIENT_DATA': 'YETERSİZ VERİ'
+    };
+    return map[dir] || dir;
+  }
+  return dir;
+}
+
+export function localizeCategory(cat) {
+  if (currentLang === 'tr') {
+    const map = {
+      'NUMERIC': 'SAYISAL',
+      'STRING': 'METİN',
+      'DATETIME': 'TARİH / ZAMAN',
+      'BOOLEAN': 'MANTIKSAL',
+      'OTHER': 'DİĞER'
+    };
+    return map[cat] || cat;
+  }
+  return cat;
+}
