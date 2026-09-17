@@ -123,16 +123,23 @@ class ConnectionRegistry:
         db_target = conn_info["database_name"]
         if conn_info["db_type"] in ("sqlite", "duckdb") and db_target:
             in_docker = Path("/.dockerenv").exists() or (os.environ.get("NEXULOOM_ENV") == "development" and Path("/app").exists())
-            if in_docker and not Path(db_target).exists():
+            if not Path(db_target).exists() or (not in_docker and db_target.startswith("/app/")):
                 fname = Path(db_target).name
-                cand = settings.NEXULOOM_DATA_DIR / fname
-                if cand.exists():
-                    db_target = str(cand)
-            elif not in_docker and (db_target.startswith("/app/") or not Path(db_target).exists()):
-                fname = Path(db_target).name
-                cand = settings.NEXULOOM_DATA_DIR / fname
-                if cand.exists():
-                    db_target = str(cand)
+                cands = []
+                if "search_index" in fname:
+                    cands.extend([
+                        Path("/app/external_data") / fname,
+                        Path("/app/external_data") / "search_index.db",
+                        Path("/home/alperen/derindex/data") / "search_index.db",
+                        settings.BASE_DIR.parent / "derindex" / "data" / "search_index.db",
+                    ])
+                cands.extend([
+                    settings.NEXULOOM_DATA_DIR / fname,
+                    settings.BASE_DIR / "data" / fname,
+                ])
+                found = next((p for p in cands if p.exists()), None)
+                if found:
+                    db_target = str(found)
 
         return db_manager.build_connection_url(
             db_type=conn_info["db_type"],
@@ -168,17 +175,22 @@ class ConnectionRegistry:
         return {"success": success, "status": status, "message": message, "tested_at": now}
 
     def auto_discover_local_sqlite(self) -> List[Dict[str, Any]]:
-        """Scans workspace data directories for SQLite database files and auto-registers them cleanly."""
+        """Scans workspace data directories and external Derindex live database, registering cleanly."""
         from pathlib import Path
         search_roots = [
             settings.NEXULOOM_DATA_DIR,
             settings.BASE_DIR / "data",
         ]
 
-        # Check external mounted data in Docker container if present
-        external_data = Path("/app/external_data")
-        if external_data.exists() and external_data not in search_roots:
-            search_roots.append(external_data)
+        # Check Derindex live project database directories
+        derindex_dirs = [
+            Path("/app/external_data"),
+            Path("/home/alperen/derindex/data"),
+            settings.BASE_DIR.parent / "derindex" / "data",
+        ]
+        for d_dir in derindex_dirs:
+            if d_dir.exists() and d_dir not in search_roots:
+                search_roots.append(d_dir)
 
         # Check any extra paths explicitly specified via env
         extra_paths = os.environ.get("NEXULOOM_EXTRA_DB_PATHS") or os.environ.get("UDI_EXTRA_DB_PATHS")
@@ -201,7 +213,11 @@ class ConnectionRegistry:
                     except Exception:
                         continue
 
-                    cand_name = p.stem
+                    # Clean canonical connection name
+                    if p.stem in ("search_index", "derindex_search_index"):
+                        cand_name = "derindex_search_index"
+                    else:
+                        cand_name = p.stem
 
                     # Check if already registered by name or file basename
                     existing_conns = self.list_connections()
@@ -209,10 +225,10 @@ class ConnectionRegistry:
                     for c in existing_conns:
                         c_name = c["name"]
                         c_fname = Path(c["database_name"]).name if c.get("database_name") else ""
-                        if c["db_type"] == "sqlite" and (c_name == cand_name or c_fname == p.name):
+                        if c["db_type"] == "sqlite" and (c_name == cand_name or (cand_name == "derindex_search_index" and ("search_index" in c_fname or c_name == "derindex_search_index"))):
                             already_exists = True
-                            # If existing registered path does not exist in this environment, update it to current path
-                            if not Path(c["database_name"]).exists() and p.exists():
+                            # If existing registered path does not exist in this environment, or was an internal fake copy, update to real live path
+                            if (not Path(c["database_name"]).exists() or "nexuloom" in str(c["database_name"])) and p.exists() and "derindex" in str(p):
                                 with self._get_connection() as conn:
                                     conn.execute(
                                         "UPDATE database_connections SET database_name = ? WHERE name = ?",
