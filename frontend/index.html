@@ -1,0 +1,639 @@
+<!DOCTYPE html>
+<html lang="tr" translate="no" class="notranslate">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Nexuloom | Universal Data Intelligence & Reporting Platform</title>
+  <meta name="description" content="Nexuloom - Production-grade Universal Data Intelligence & Reporting Platform for deep schema discovery, profiling, anomaly detection, business rules, and multi-format reports." />
+  
+  <!-- Favicon & Bookmarks -->
+  <link rel="icon" type="image/x-icon" href="/favicon.ico">
+  <link rel="shortcut icon" href="/favicon.ico">
+  <link rel="icon" type="image/png" sizes="16x16" href="/static/favicon-16x16.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/static/favicon-32x32.png">
+  <link rel="icon" type="image/png" sizes="48x48" href="/static/favicon-48x48.png">
+  <link rel="apple-touch-icon" sizes="180x180" href="/static/apple-touch-icon.png">
+
+  <!-- OpenGraph & Twitter Social Meta -->
+  <meta property="og:type" content="website" />
+  <meta property="og:title" content="Nexuloom | Universal Data Intelligence & Reporting Platform" />
+  <meta property="og:description" content="Production-grade Universal Data Intelligence & Reporting Platform for deep schema discovery, profiling, anomaly detection, business rules, and multi-format reports." />
+  <meta property="og:image" content="/static/img/og_image.png" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:image" content="/static/img/og_image.png" />
+
+  <!-- Suppress automatic browser translation popups -->
+  <meta name="google" content="notranslate" />
+  <meta name="googlebot" content="notranslate" />
+  <meta name="robots" content="notranslate" />
+  <meta name="format-detection" content="telephone=no" />
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/static/css/styles.css?v=1.1.1" />
+  <!-- Local Offline Chart.js -->
+  <script src="/static/js/chart.umd.min.js?v=1.1.1"></script>
+</head>
+<body>
+  <div class="app-container">
+    <!-- Sidebar Navigation -->
+    <aside class="sidebar">
+      <div class="sidebar-header">
+        <div class="brand-icon">
+          <img src="/static/img/logo.png" alt="Nexuloom" style="width: 100%; height: 100%; object-fit: cover; border-radius: var(--radius-sm);" />
+        </div>
+        <div>
+          <div class="brand-title" data-i18n="brandTitle">Nexuloom</div>
+          <div class="brand-sub" data-i18n="brandSubtitle">Evrensel Veri Zekâsı Platformu</div>
+        </div>
+      </div>
+
+      <ul class="nav-menu">
+        <li class="nav-item"><a class="nav-link active" data-tab="overview" onclick="window.switchTab('overview')"><span class="nav-icon">📊</span> <span data-i18n="navOverview">Genel Bakış</span></a></li>
+        <li class="nav-item"><a class="nav-link" data-tab="databases" onclick="window.switchTab('databases')"><span class="nav-icon">🗄️</span> <span data-i18n="navDatabases">Veritabanları</span></a></li>
+        <li class="nav-item"><a class="nav-link" data-tab="schema" onclick="window.switchTab('schema')"><span class="nav-icon">🗺️</span> <span data-i18n="navSchema">Şema & İlişkiler</span></a></li>
+        <li class="nav-item"><a class="nav-link" data-tab="profiling" onclick="window.switchTab('profiling')"><span class="nav-icon">🔬</span> <span data-i18n="navProfiling">Veri Profili</span></a></li>
+        <li class="nav-item"><a class="nav-link" data-tab="quality" onclick="window.switchTab('quality')"><span class="nav-icon">🛡️</span> <span data-i18n="navQuality">Veri Kalitesi</span></a></li>
+        <li class="nav-item"><a class="nav-link" data-tab="kpis" onclick="window.switchTab('kpis')"><span class="nav-icon">🎯</span> <span data-i18n="navKpis">KPI Motoru</span></a></li>
+        <li class="nav-item"><a class="nav-link" data-tab="trends" onclick="window.switchTab('trends')"><span class="nav-icon">📈</span> <span data-i18n="navTrends">Trend Analizi</span></a></li>
+        <li class="nav-item"><a class="nav-link" data-tab="anomalies" onclick="window.switchTab('anomalies')"><span class="nav-icon">⚡</span> <span data-i18n="navAnomalies">Anomali Tespiti</span></a></li>
+        <li class="nav-item"><a class="nav-link" data-tab="rules" onclick="window.switchTab('rules')"><span class="nav-icon">⚖️</span> <span data-i18n="navRules">İş Kuralları</span></a></li>
+        <li class="nav-item"><a class="nav-link" data-tab="insights" onclick="window.switchTab('insights')"><span class="nav-icon">💡</span> <span data-i18n="navInsights">Kök Neden & İçgörüler</span></a></li>
+        <li class="nav-item"><a class="nav-link" data-tab="query" onclick="window.switchTab('query')"><span class="nav-icon">💬</span> <span data-i18n="navQuery">Doğal Dil & Güvenli SQL</span></a></li>
+        <li class="nav-item"><a class="nav-link" data-tab="reports" onclick="window.switchTab('reports')"><span class="nav-icon">📑</span> <span data-i18n="navReports">Rapor Oluşturucu</span></a></li>
+        <li class="nav-item"><a class="nav-link" data-tab="audit" onclick="window.switchTab('audit')"><span class="nav-icon">📋</span> <span data-i18n="navAudit">Denetim & Soykütüğü</span></a></li>
+      </ul>
+
+      <div class="sidebar-footer">
+        <span class="status-indicator"><span class="status-dot"></span> <span data-i18n="engineOnline">Motor Çevrimiçi</span></span>
+        <span>v1.0.0</span>
+      </div>
+    </aside>
+
+    <!-- Main Wrapper -->
+    <div class="main-wrapper">
+      <!-- Top Filter Bar & Actions -->
+      <header class="topbar">
+        <div class="filter-bar">
+          <span class="filter-label" data-i18n="dbLabel">Veritabanı:</span>
+          <select id="globalDbSelect" class="filter-select">
+            <option value="">Yükleniyor...</option>
+          </select>
+
+          <button id="btnScanDbs" class="btn btn-secondary btn-sm" onclick="window.scanLocalDatabases()" data-i18n="scanDbsBtn" title="Aktif projelerdeki SQLite veritabanlarını otomatik tara">🔍 Yerel DB'leri Tara</button>
+
+          <span class="filter-label" style="margin-left: 8px;" data-i18n="tableLabel">Tablo:</span>
+          <select id="globalTableSelect" class="filter-select">
+            <option value="">Tablo seçin</option>
+          </select>
+        </div>
+
+        <div class="topbar-actions">
+          <!-- Light / Dark Theme Button -->
+          <button id="btnThemeToggle" class="btn btn-secondary btn-icon" onclick="window.toggleTheme()" title="Açık / Koyu Tema Değiştir">
+            <span id="themeToggleIcon">☀️</span> <span id="themeToggleText">Açık Tema</span>
+          </button>
+
+          <!-- Language Button (TR / EN) -->
+          <button id="btnLangToggle" class="btn btn-secondary btn-icon" onclick="window.toggleLanguage()" title="Dili Değiştir (TR / EN)">
+            <span id="langFlag">🇹🇷</span> <span id="langToggleText">Türkçe</span>
+          </button>
+
+          <!-- Quick Report Button -->
+          <button id="btnQuickReport" class="btn btn-primary" onclick="window.quickReport()" data-i18n="quickReportBtn">⚡ Hızlı Aylık Rapor</button>
+        </div>
+      </header>
+
+      <!-- Scrollable Main Content -->
+      <main class="content-area">
+        <!-- 1. OVERVIEW TAB -->
+        <section id="tab-overview" class="tab-view active">
+          <div class="page-header">
+            <h1 class="page-title" data-i18n="overviewTitle">Operasyonel Genel Bakış</h1>
+            <p class="page-desc" data-i18n="overviewDesc">Bağlı veritabanı boru hatları genelinde gerçek zamanlı analitik özet.</p>
+          </div>
+
+          <div class="grid-4" id="overviewKpiCards">
+            <!-- Dynamically populated KPI cards -->
+            <div class="card"><div class="card-title" data-i18n="cardTotalRevenue">Toplam Gelir</div><div class="metric-number">₺12.4M</div><div class="metric-trend trend-down">↓ 6.4% MoM</div></div>
+            <div class="card"><div class="card-title" data-i18n="cardOrderVolume">Sipariş Hacmi</div><div class="metric-number">25,000</div><div class="metric-trend trend-up">↑ 4.2% MoM</div></div>
+            <div class="card"><div class="card-title" data-i18n="cardDataQualityScore">Veri Kalite Skoru</div><div class="metric-number" style="color: #10b981;">94.2/100</div><div class="metric-trend trend-neutral">Grade A</div></div>
+            <div class="card"><div class="card-title" data-i18n="cardActiveAnomalies">Aktif Anomaliler</div><div class="metric-number" style="color: #ef4444;">3 Critical</div><div class="metric-trend trend-down">M-102 Overheating</div></div>
+          </div>
+
+          <div class="grid-2">
+            <div class="card">
+              <div class="card-header">
+                <span class="card-title" data-i18n="chartRevenueTitle">Gelir Yörüngesi & Hareketli Ortalama</span>
+                <span class="badge badge-low" data-i18n="badgeTrend">Trend Analizi</span>
+              </div>
+              <div class="chart-box"><canvas id="overviewRevenueChart"></canvas></div>
+            </div>
+            <div class="card">
+              <div class="card-header">
+                <span class="card-title" data-i18n="chartQualityTitle">Veri Kalitesi Sağlık Dağılımı</span>
+                <span class="badge badge-success" data-i18n="badgeAudit">Denetim</span>
+              </div>
+              <div class="chart-box"><canvas id="overviewQualityChart"></canvas></div>
+            </div>
+          </div>
+
+          <div class="card" style="margin-bottom: 24px;">
+            <div class="card-header">
+              <span class="card-title" data-i18n="obsTitle">Otonom Yönetici Gözlemleri</span>
+              <span class="badge badge-medium" data-i18n="badgeDeterministic">Deterministik Sentez</span>
+            </div>
+            <div id="overviewObservationsList" style="line-height: 1.8; color: var(--text-main);" data-i18n="obsLoading">
+              Gerçek zamanlı yönetici gözlemleri yükleniyor...
+            </div>
+          </div>
+        </section>
+
+        <!-- 2. DATABASES TAB -->
+        <section id="tab-databases" class="tab-view">
+          <div class="page-header" style="display: flex; justify-content: space-between; align-items: flex-end;">
+            <div>
+              <h1 class="page-title" data-i18n="dbTitle">Veritabanı Bağlantıları</h1>
+              <p class="page-desc" data-i18n="dbDesc">PostgreSQL, MySQL, MSSQL ve SQLite soyutlanmış bağlantılarını yönetin.</p>
+            </div>
+            <button id="btnAddDbModal" class="btn btn-primary" onclick="window.openAddDbModal()" data-i18n="btnAddConnection">+ Yeni Bağlantı Ekle</button>
+          </div>
+
+          <div class="card">
+            <div class="table-container">
+              <table class="data-table" id="dbConnectionsTable">
+                <thead>
+                  <tr>
+                    <th data-i18n="colDbName">Bağlantı Adı</th>
+                    <th data-i18n="colDbType">Tür</th>
+                    <th data-i18n="colDbTarget">Veritabanı Hedefi</th>
+                    <th data-i18n="colDbHost">Host / Port</th>
+                    <th data-i18n="colDbStatus">Durum</th>
+                    <th data-i18n="colDbLastChecked">Son Kontrol</th>
+                    <th data-i18n="colDbActions">İşlemler</th>
+                  </tr>
+                </thead>
+                <tbody></tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        <!-- 3. SCHEMA & GRAPH TAB -->
+        <section id="tab-schema" class="tab-view">
+          <div class="page-header">
+            <h1 class="page-title" data-i18n="schemaTitle">Şema Kataloğu & İlişki Çizgesi</h1>
+            <p class="page-desc" data-i18n="schemaDesc">Otomatik keşfedilmiş tablolar, yabancı anahtarlar (FK) ve çıkarımsal ER modelleri.</p>
+          </div>
+
+          <div class="grid-2">
+            <div class="card">
+              <div class="card-header">
+                <span class="card-title" data-i18n="catalogTitle">Tablo & Sütun Kataloğu</span>
+                <span id="schemaTableCountBadge" class="badge badge-low">0 Tablo</span>
+              </div>
+              <div class="table-container" style="max-height: 480px;">
+                <table class="data-table" id="schemaCatalogTable">
+                  <thead>
+                    <tr>
+                      <th data-i18n="colTableName">Tablo Adı</th>
+                      <th data-i18n="colColumns">Sütunlar</th>
+                      <th data-i18n="colRows">Satır Sayısı</th>
+                      <th data-i18n="colPK">Birincil Anahtarlar (PK)</th>
+                    </tr>
+                  </thead>
+                  <tbody></tbody>
+                </table>
+              </div>
+            </div>
+
+            <div class="card">
+              <div class="card-header">
+                <span class="card-title" data-i18n="relationshipsTitle">İlişki & Çizge Haritası (ER)</span>
+                <span id="schemaRelCountBadge" class="badge badge-medium">0 İlişki</span>
+              </div>
+              <div class="table-container" style="max-height: 480px;">
+                <table class="data-table" id="schemaRelationshipsTable">
+                  <thead>
+                    <tr>
+                      <th data-i18n="colSource">Kaynak Sütun</th>
+                      <th data-i18n="colTarget">Hedef Sütun</th>
+                      <th data-i18n="colRelType">İlişki Türü</th>
+                      <th data-i18n="colRelDesc">Açıklama</th>
+                    </tr>
+                  </thead>
+                  <tbody></tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- 4. DATA PROFILING TAB -->
+        <section id="tab-profiling" class="tab-view">
+          <div class="page-header">
+            <h1 class="page-title" data-i18n="profilingTitle">Derin Veri Profili & İstatistikler</h1>
+            <p class="page-desc" data-i18n="profilingDesc">Kuantiller, standart sapma, basıklık, histogramlar ve değer sıklığı analizi.</p>
+          </div>
+
+          <div class="card" style="margin-bottom: 24px;">
+            <div class="table-container">
+              <table class="data-table" id="profilingTable">
+                <thead>
+                  <tr>
+                    <th data-i18n="colColName">Sütun Adı</th>
+                    <th data-i18n="colTypeCat">Tür Kategorisi</th>
+                    <th data-i18n="colNullPct">Null Oranı (Sayı)</th>
+                    <th data-i18n="colUnique">Benzersiz Değerler</th>
+                    <th data-i18n="colMinMax">Min / Max</th>
+                    <th data-i18n="colMeanMedian">Ortalama / Medyan</th>
+                    <th data-i18n="colStats">İstatistikler (Std / IQR)</th>
+                    <th data-i18n="colTopValues">En Sık Değerler</th>
+                  </tr>
+                </thead>
+                <tbody></tbody>
+              </table>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="card-header">
+              <span class="card-title" id="profileChartTitle">Dağılım Histogramı</span>
+              <span class="badge badge-low">Dağılım</span>
+            </div>
+            <div class="chart-box"><canvas id="profileDistChart"></canvas></div>
+          </div>
+        </section>
+
+        <!-- 5. DATA QUALITY TAB -->
+        <section id="tab-quality" class="tab-view">
+          <div class="page-header">
+            <h1 class="page-title" data-i18n="qualityTitle">Veri Kalitesi & Bütünlük Motoru</h1>
+            <p class="page-desc" data-i18n="qualityDesc">Null kontrolleri, benzersizlik, negatif değerler ve aşırı aykırı değer ceza puanlaması (0-100).</p>
+          </div>
+
+          <div class="grid-4" style="margin-bottom: 24px;">
+            <div class="card"><div class="card-title" data-i18n="cardOverallScore">Genel Kalite Skoru</div><div class="metric-number" id="dqOverallScore" style="color: #10b981;">--/100</div><div class="metric-trend trend-neutral" id="dqGrade" data-i18n="cardQualityGrade">Grade: -</div></div>
+            <div class="card"><div class="card-title" data-i18n="cardCriticalIssues">Kritik İhlaller</div><div class="metric-number" id="dqCritCount" style="color: #ef4444;">0</div><div class="metric-trend trend-down">Bloke Edici</div></div>
+            <div class="card"><div class="card-title" data-i18n="cardTotalWarnings">Toplam Uyarılar</div><div class="metric-number" id="dqViolCount">0</div><div class="metric-trend trend-neutral">Puan Düşürücü</div></div>
+            <div class="card"><div class="card-title" data-i18n="cardTablesAudited">Denetlenen Tablolar</div><div class="metric-number" id="dqTablesCount">0</div><div class="metric-trend trend-up">Aktif Kontrol</div></div>
+          </div>
+
+          <div class="card">
+            <div class="card-header"><span class="card-title" data-i18n="violationsTitle">Kural İhlali & Denetim Kayıtları</span></div>
+            <div class="table-container">
+              <table class="data-table" id="dqViolationsTable">
+                <thead>
+                  <tr>
+                    <th data-i18n="colTableName">Tablo</th>
+                    <th data-i18n="colColName">Sütun</th>
+                    <th data-i18n="colSeverity">Önem Derecesi</th>
+                    <th data-i18n="colRuleName">Kural Adı</th>
+                    <th data-i18n="colPenalty">Ceza</th>
+                    <th data-i18n="colViolationMsg">İhlal Detayı</th>
+                  </tr>
+                </thead>
+                <tbody></tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        <!-- 6. KPI ENGINE TAB -->
+        <section id="tab-kpis" class="tab-view">
+          <div class="page-header">
+            <h1 class="page-title" data-i18n="kpiTitle">Metrik & KPI Motoru</h1>
+            <p class="page-desc" data-i18n="kpiDesc">Dinamik formüller, dönemsel büyüme (MoM/YoY) ve hedef karşılaştırma analizleri.</p>
+          </div>
+
+          <div class="grid-4" id="kpiEngineCards" style="margin-bottom: 24px;"></div>
+
+          <div class="card">
+            <div class="card-header">
+              <span class="card-title" id="kpiTimeSeriesTitle">Aylık Tarihsel Seri</span>
+              <span class="badge badge-low">MoM Trend</span>
+            </div>
+            <div class="chart-box"><canvas id="kpiTimeSeriesChart"></canvas></div>
+          </div>
+        </section>
+
+        <!-- 7. TREND ANALYSIS TAB -->
+        <section id="tab-trends" class="tab-view">
+          <div class="page-header">
+            <h1 class="page-title" data-i18n="trendsTitle">Trend & Doğrusal Regresyon Analizi</h1>
+            <p class="page-desc" data-i18n="trendsDesc">Doğrusal eğim, R² katsayısı, hareketli ortalamalar ve ani rejim değişiklikleri.</p>
+          </div>
+
+          <div class="card" style="margin-bottom: 24px;">
+            <div class="table-container">
+              <table class="data-table" id="trendsTable">
+                <thead>
+                  <tr>
+                    <th data-i18n="colMetric">Metrik</th>
+                    <th data-i18n="colTrendDirection">Yön</th>
+                    <th data-i18n="colGrowthPct">Büyüme %</th>
+                    <th data-i18n="colSlope">Regresyon Eğimi</th>
+                    <th data-i18n="colR2">R² Uyum</th>
+                    <th data-i18n="colSuddenShifts">Ani Değişimler</th>
+                    <th data-i18n="colTrendExpl">İstatistiksel Açıklama</th>
+                  </tr>
+                </thead>
+                <tbody></tbody>
+              </table>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="card-header">
+              <span class="card-title">Hareketli Ortalama & Rejim Analizi</span>
+              <span class="badge badge-medium">Regresyon</span>
+            </div>
+            <div class="chart-box"><canvas id="trendDetailChart"></canvas></div>
+          </div>
+        </section>
+
+        <!-- 8. ANOMALIES TAB -->
+        <section id="tab-anomalies" class="tab-view">
+          <div class="page-header">
+            <h1 class="page-title" data-i18n="anomaliesTitle">İstatistiksel Anomali Tespiti</h1>
+            <p class="page-desc" data-i18n="anomaliesDesc">Z-Score (>2.5σ), IQR Çiti (>1.5x) ve Isolation Forest algoritmalarıyla kritik sapmalar.</p>
+          </div>
+
+          <div class="card" style="margin-bottom: 20px;">
+            <div style="display: flex; gap: 14px; margin-bottom: 16px; align-items: center; flex-wrap: wrap;">
+              <span class="filter-label" data-i18n="labelScanCol">Taranacak Sütun:</span>
+              <select id="anomalyMetricSelect" class="filter-select"></select>
+              <span class="filter-label" data-i18n="labelDetectionMethod">Tespit Metodu:</span>
+              <select id="anomalyMethodSelect" class="filter-select">
+                <option value="ALL" data-i18n="methodAll">Tüm Yöntemler (Toplu)</option>
+                <option value="ZSCORE" data-i18n="methodZscore">Z-Score (>2.5σ)</option>
+                <option value="IQR" data-i18n="methodIqr">IQR Çiti (>1.5x)</option>
+                <option value="ISOLATION_FOREST" data-i18n="methodForest">Isolation Forest</option>
+              </select>
+              <button id="btnRunAnomalyScan" class="btn btn-primary" onclick="window.runAnomalyScan()" data-i18n="btnScanAnomalies">Anomalileri Tara</button>
+            </div>
+
+            <div class="table-container">
+              <table class="data-table" id="anomaliesTable">
+                <thead>
+                  <tr>
+                    <th data-i18n="colEntity">Kayıt / ID</th>
+                    <th data-i18n="colMetric">Metrik</th>
+                    <th data-i18n="colSeverity">Önem Derecesi</th>
+                    <th data-i18n="colObserved">Gözlenen Değer</th>
+                    <th data-i18n="colNormalRange">Normal Aralık</th>
+                    <th data-i18n="colDeviation">Sapma %</th>
+                    <th data-i18n="colMethod">Yöntem</th>
+                    <th data-i18n="colRationale">Denetim Gerekçesi</th>
+                  </tr>
+                </thead>
+                <tbody></tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        <!-- 9. BUSINESS RULES TAB -->
+        <section id="tab-rules" class="tab-view">
+          <div class="page-header" style="display: flex; justify-content: space-between; align-items: flex-end;">
+            <div>
+              <h1 class="page-title" data-i18n="rulesTitle">İş Kuralları Motoru</h1>
+              <p class="page-desc" data-i18n="rulesDesc">Özel koşullu mantık kuralları tanımlayın (örn. IF stok < min THEN YÜKSEK) ve denetleyin.</p>
+            </div>
+            <div style="display: flex; gap: 8px;">
+              <button id="btnExecuteAllRules" class="btn btn-secondary" onclick="window.executeAllRules()" data-i18n="btnRunAllRules">⚡ Tüm Kuralları Çalıştır</button>
+              <button id="btnAddRuleModal" class="btn btn-primary" onclick="window.openCreateRulePrompt()" data-i18n="btnCreateRule">+ Kural Oluştur</button>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="table-container">
+              <table class="data-table" id="businessRulesTable">
+                <thead>
+                  <tr>
+                    <th data-i18n="colRuleName">Kural Adı</th>
+                    <th data-i18n="colTableName">Tablo</th>
+                    <th data-i18n="colSeverity">Önem</th>
+                    <th data-i18n="colRuleCond">Koşul İfadesi (SQL)</th>
+                    <th data-i18n="colRuleStatus">Sonuç</th>
+                    <th data-i18n="colViolCount">İhlal Sayısı</th>
+                    <th data-i18n="colLastRun">Son Çalıştırma</th>
+                    <th data-i18n="colDbActions">İşlemler</th>
+                  </tr>
+                </thead>
+                <tbody></tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        <!-- 10. INSIGHTS & ROOT CAUSE TAB -->
+        <section id="tab-insights" class="tab-view">
+          <div class="page-header">
+            <h1 class="page-title" data-i18n="insightsTitle">Varyans Ayrıştırma & Kök Neden Analizi</h1>
+            <p class="page-desc" data-i18n="insightsDesc">Çok boyutlu yüzde katkı ayrıştırması ve nedensellik hiyerarşi ağacı.</p>
+          </div>
+
+          <div id="insightsContainer" style="display: flex; flex-direction: column; gap: 16px; margin-bottom: 24px;"></div>
+
+          <div class="card">
+            <div class="card-header">
+              <span class="card-title" data-i18n="rootCauseTitle">Hiyerarşik Kök Neden Ayrıştırma Ağacı</span>
+              <span class="badge badge-low">Drill-down</span>
+            </div>
+            <div id="rootCauseTreeContainer" style="background: var(--bg-surface); padding: 18px; border-radius: var(--radius-md); font-family: 'JetBrains Mono', monospace; font-size: 0.85rem; overflow-x: auto; border: 1px solid var(--border-glass);"></div>
+          </div>
+        </section>
+
+        <!-- 11. NATURAL LANGUAGE & SQL TAB -->
+        <section id="tab-query" class="tab-view">
+          <div class="page-header">
+            <h1 class="page-title" data-i18n="queryTitle">Doğal Dil & Salt-Okunur Güvenli SQL</h1>
+            <p class="page-desc" data-i18n="queryDesc">Doğal dille analitik soru sorun veya salt-okunur (read-only) güvenli SQL çalıştırın.</p>
+          </div>
+
+          <div class="card" style="margin-bottom: 20px;">
+            <div class="form-group">
+              <label data-i18n="nlLabel">Doğal Dille Analitik Soru Sorun (örn: 'Bölgeye göre en çok satan ürünler', 'Aylık gelir trendi')</label>
+              <div style="display: flex; gap: 10px;">
+                <input type="text" id="nlInput" class="form-input" placeholder="Analitik sorunuzu doğal dille yazın..." data-i18n-placeholder="nlPlaceholder" />
+                <button id="btnAskNl" class="btn btn-primary" onclick="window.askNaturalLanguage()" data-i18n="btnAskNl">Doğal Dille Sor</button>
+              </div>
+            </div>
+
+            <div class="form-group" style="margin-top: 20px;">
+              <label data-i18n="sqlLabel">Veya Doğrudan Salt-Okunur SQL Çalıştırın (INSERT/UPDATE/DELETE kesinlikle engellenir):</label>
+              <textarea id="sqlInput" class="form-input" rows="3" style="font-family: 'JetBrains Mono', monospace;">SELECT * FROM orders LIMIT 20;</textarea>
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 10px;">
+                <span id="querySafetyStatus" style="font-size: 0.8rem; color: var(--text-muted);" data-i18n="sqlSafetyBadge">Katı Salt-Okunur Mod Aktif</span>
+                <button id="btnRunSql" class="btn btn-success" onclick="window.runSqlQuery()" data-i18n="btnRunSql">▶ SQL Çalıştır</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="card" id="queryResultCard" style="display: none;">
+            <div class="card-header">
+              <span class="card-title" id="queryResultTitle">Sorgu Sonuçları</span>
+              <span id="queryElapsedBadge" class="badge badge-low">0 ms</span>
+            </div>
+            <div class="table-container" style="max-height: 400px;">
+              <table class="data-table" id="queryResultTable">
+                <thead></thead>
+                <tbody></tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        <!-- 12. REPORT BUILDER TAB -->
+        <section id="tab-reports" class="tab-view">
+          <div class="page-header" style="display: flex; justify-content: space-between; align-items: flex-end;">
+            <div>
+              <h1 class="page-title" data-i18n="reportsTitle">Yönetici Raporu Oluşturucu</h1>
+              <p class="page-desc" data-i18n="reportsDesc">PDF, çoklu sayfalı Excel (.xlsx), interaktif HTML, CSV ve JSON formatlarında kurumsal raporlar derleyin.</p>
+            </div>
+            <button id="btnGenerateReportModal" class="btn btn-primary" onclick="window.openReportModal()" data-i18n="btnGenerateReport">⚡ Rapor Oluştur</button>
+          </div>
+
+          <div class="card" style="margin-bottom: 24px;">
+            <div class="card-header"><span class="card-title" data-i18n="reportsLibraryTitle">Oluşturulan Rapor Dosyaları Kütüphanesi</span></div>
+            <div class="table-container">
+              <table class="data-table" id="reportsLibraryTable">
+                <thead>
+                  <tr>
+                    <th data-i18n="colFilename">Dosya Adı</th>
+                    <th data-i18n="colFormat">Format</th>
+                    <th data-i18n="colFileSize">Boyut</th>
+                    <th data-i18n="colDbActions">İşlemler</th>
+                  </tr>
+                </thead>
+                <tbody></tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        <!-- 13. AUDIT & LINEAGE TAB -->
+        <section id="tab-audit" class="tab-view">
+          <div class="page-header">
+            <h1 class="page-title" data-i18n="auditTitle">Denetim Günlükleri & Veri Soykütüğü</h1>
+            <p class="page-desc" data-i18n="auditDesc">Değiştirilemez güvenlik denetim kayıtları ve geriye dönük veri kaynağı zinciri.</p>
+          </div>
+
+          <div class="card" style="margin-bottom: 24px;">
+            <div class="card-header"><span class="card-title" data-i18n="auditLogsTitle">Güvenlik & Eylem Denetim Günlükleri</span></div>
+            <div class="table-container" style="max-height: 450px;">
+              <table class="data-table" id="auditLogsTable">
+                <thead>
+                  <tr>
+                    <th data-i18n="colTimestamp">Zaman Damgası</th>
+                    <th data-i18n="colAction">Eylem</th>
+                    <th data-i18n="colDbStatus">Durum</th>
+                    <th data-i18n="colTarget">Hedef</th>
+                    <th data-i18n="colExecTime">Süre</th>
+                    <th data-i18n="colDetails">Sorgu / Detay</th>
+                  </tr>
+                </thead>
+                <tbody></tbody>
+              </table>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="card-header"><span class="card-title" data-i18n="lineageTitle">Geriye Dönük Veri Soykütüğü Kayıtları (Lineage)</span></div>
+            <div class="table-container" style="max-height: 350px;">
+              <table class="data-table" id="lineageTable">
+                <thead>
+                  <tr>
+                    <th data-i18n="colItemId">Öğe ID</th>
+                    <th data-i18n="colRelType">Tür</th>
+                    <th data-i18n="colItemLabel">Etiket</th>
+                    <th data-i18n="colSourceTable">Kaynak DB / Tablo</th>
+                    <th data-i18n="colSourceQuery">Kaynak Sorgu</th>
+                  </tr>
+                </thead>
+                <tbody></tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+      </main>
+    </div>
+  </div>
+
+  <!-- MODAL: ADD DATABASE -->
+  <div id="modalAddDb" class="modal-overlay">
+    <div class="modal-content">
+      <h2 style="margin-bottom: 16px;" data-i18n="modalAddDbTitle">Yeni Veritabanı Bağla</h2>
+      <div class="form-group">
+        <label data-i18n="modalDbNameLabel">Bağlantı Adı</label>
+        <input id="dbNameInput" class="form-input" placeholder="örn. Analitik DB" />
+      </div>
+      <div class="form-group">
+        <label data-i18n="modalDbTypeLabel">Veritabanı Türü</label>
+        <select id="dbTypeSelect" class="form-input">
+          <option value="sqlite">SQLite</option>
+          <option value="postgresql">PostgreSQL</option>
+          <option value="mysql">MySQL</option>
+          <option value="mssql">MSSQL Server</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label data-i18n="modalDbTargetLabel">Veritabanı Dosya Yolu veya Adı</label>
+        <input id="dbTargetInput" class="form-input" placeholder="örn. data/veritabani.db veya prod_db" />
+      </div>
+      <div class="form-group">
+        <label data-i18n="modalDbHostLabel">Host (SQLite için boş bırakılabilir)</label>
+        <input id="dbHostInput" class="form-input" placeholder="localhost" />
+      </div>
+      <div class="form-group">
+        <label data-i18n="modalDbPortLabel">Port (İsteğe bağlı)</label>
+        <input id="dbPortInput" type="number" class="form-input" placeholder="5432" />
+      </div>
+      <div class="form-group">
+        <label data-i18n="modalDbUserLabel">Kullanıcı Adı (İsteğe bağlı)</label>
+        <input id="dbUserInput" class="form-input" placeholder="db_user" />
+      </div>
+      <div class="form-group">
+        <label data-i18n="modalDbPassLabel">Parola (İsteğe bağlı)</label>
+        <input id="dbPassInput" type="password" class="form-input" placeholder="••••••••" />
+      </div>
+      <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px;">
+        <button id="btnCloseDbModal" class="btn btn-secondary" onclick="window.closeAddDbModal()" data-i18n="btnCancel">İptal</button>
+        <button id="btnSubmitAddDb" class="btn btn-primary" onclick="window.submitAddDb()" data-i18n="btnSaveConnect">Bağlan & Kaydet</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: GENERATE REPORT -->
+  <div id="modalReport" class="modal-overlay">
+    <div class="modal-content">
+      <h2 style="margin-bottom: 16px;" data-i18n="modalReportTitle">Yönetici Raporu Oluştur</h2>
+      <div class="form-group">
+        <label data-i18n="modalRepTitleLabel">Rapor Başlığı</label>
+        <input id="repTitleInput" class="form-input" value="Aylık Veri Zekâsı ve İş Zekâsı Raporu" />
+      </div>
+      <div class="form-group">
+        <label data-i18n="modalRepPeriodLabel">Rapor Dönemi</label>
+        <input id="repPeriodInput" class="form-input" value="Eylül 2026" />
+      </div>
+      <div class="form-group">
+        <label data-i18n="modalRepFormatLabel">Dışa Aktarma Formatı</label>
+        <select id="repFormatSelect" class="form-input">
+          <option value="ALL" data-i18n="optAllFormats">Tüm Formatlar (PDF + Excel + HTML + CSV + JSON)</option>
+          <option value="PDF" data-i18n="optPdf">PDF (Yayın & Baskı Formatı)</option>
+          <option value="EXCEL" data-i18n="optExcel">Excel (.xlsx Çoklu Sayfa)</option>
+          <option value="HTML" data-i18n="optHtml">HTML (İnteraktif Web)</option>
+        </select>
+      </div>
+      <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px;">
+        <button id="btnCloseRepModal" class="btn btn-secondary" onclick="window.closeReportModal()" data-i18n="btnCancel">İptal</button>
+        <button id="btnSubmitGenerateReport" class="btn btn-primary" onclick="window.submitGenerateReport()" data-i18n="btnGenerateNow">⚡ Hemen Oluştur</button>
+      </div>
+    </div>
+  </div>
+
+  <script type="module" src="/static/js/app.js?v=1.0.5"></script>
+</body>
+</html>

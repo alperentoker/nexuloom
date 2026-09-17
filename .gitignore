@@ -1,0 +1,73 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# Virtual environments
+.venv/
+venv/
+ENV/
+env/
+env.bak/
+venv.bak/
+
+# Runtime SQLite databases & local indexes
+data/*.db
+data/*.db-wal
+data/*.db-shm
+data/*.sqlite3
+!data/.gitkeep
+
+# Environment & secrets
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.pfx
+*.p12
+credentials*
+id_rsa*
+id_ed25519*
+
+# Generated reports & exports
+reports/exports/*
+!reports/exports/.gitkeep
+reports/scheduled/*
+!reports/scheduled/.gitkeep
+
+# Logs & runtime artifacts
+logs/*.log
+logs/*.db
+!logs/.gitkeep
+*.swp
+*.swo
+*~
+
+# Operating System files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# IDE & Editor settings
+.idea/
+.vscode/
+*.sublime-project
+*.sublime-workspace
+
+# Testing & Coverage
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Packaging & Distribution
+dist/
+build/
+*.egg-info/
+.eggs/
+wheels/

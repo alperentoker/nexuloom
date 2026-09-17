@@ -1,0 +1,38 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "nexuloom"
+version = "1.0.0"
+description = "Nexuloom - Universal Data Intelligence & Reporting Platform"
+readme = "README.md"
+requires-python = ">=3.11"
+authors = [{ name = "Alperen Toker", email = "alperentoker149@gmail.com" }]
+dependencies = [
+    "fastapi>=0.115.0",
+    "uvicorn>=0.30.0",
+    "sqlalchemy>=2.0.30",
+    "pydantic>=2.8.0",
+    "pydantic-settings>=2.4.0",
+    "click>=8.1.7",
+    "jinja2>=3.1.4",
+    "openpyxl>=3.1.5",
+    "reportlab>=4.2.0",
+    "cryptography>=43.0.0",
+    "requests>=2.32.0",
+    "python-dotenv>=1.0.1",
+    "pandas>=2.2.0",
+    "numpy>=2.0.0",
+    "scipy>=1.13.0",
+    "scikit-learn>=1.5.0",
+    "pymysql>=1.1.0",
+]
+
+[project.scripts]
+nexuloom = "nexuloom:cli"
+udi = "nexuloom:cli"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["app*"]
