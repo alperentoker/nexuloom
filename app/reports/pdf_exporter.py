@@ -26,12 +26,22 @@ def _ensure_unicode_fonts() -> Tuple[str, str]:
     if _fonts_registered:
         return "DejaVuSans", "DejaVuSans-Bold"
 
+    app_fonts = Path(__file__).resolve().parent.parent / "fonts"
+    assets_fonts = Path(__file__).resolve().parent.parent.parent / "assets" / "fonts"
+    base_fonts = settings.BASE_DIR / "app" / "fonts"
+
     regular_candidates = [
+        str(app_fonts / "DejaVuSans.ttf"),
+        str(assets_fonts / "DejaVuSans.ttf"),
+        str(base_fonts / "DejaVuSans.ttf"),
         "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
         "/usr/share/fonts/dejavu/DejaVuSans.ttf",
         "/usr/local/share/fonts/DejaVuSans.ttf",
     ]
     bold_candidates = [
+        str(app_fonts / "DejaVuSans-Bold.ttf"),
+        str(assets_fonts / "DejaVuSans-Bold.ttf"),
+        str(base_fonts / "DejaVuSans-Bold.ttf"),
         "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",
         "/usr/share/fonts/dejavu/DejaVuSans-Bold.ttf",
         "/usr/local/share/fonts/DejaVuSans-Bold.ttf",
