@@ -26,8 +26,17 @@ class DatabaseConnectionManager:
         db_type_lower = db_type.lower().strip()
 
         if db_type_lower == "sqlite":
+            from pathlib import Path
             clean_path = database.strip()
-            # If absolute or relative path
+            p = Path(clean_path)
+            if not p.exists():
+                cand_data = settings.NEXULOOM_DATA_DIR / p.name
+                if cand_data.exists():
+                    clean_path = str(cand_data)
+                else:
+                    cand_base = settings.BASE_DIR / "data" / p.name
+                    if cand_base.exists():
+                        clean_path = str(cand_base)
             return f"sqlite:///{clean_path}"
 
         # URL encode credentials

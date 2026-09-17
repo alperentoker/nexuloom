@@ -1,4 +1,6 @@
+import os
 import sqlite3
+from pathlib import Path
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 from sqlalchemy.engine import Engine
@@ -162,6 +164,25 @@ class ConnectionRegistry:
             settings.NEXULOOM_DATA_DIR,
             settings.BASE_DIR / "data",
         ]
+
+        # Check sibling derindex project data if running on host
+        sibling_derindex = settings.BASE_DIR.parent / "derindex" / "data"
+        if sibling_derindex.exists() and sibling_derindex not in search_roots:
+            search_roots.append(sibling_derindex)
+
+        # Check external mounted data in Docker container if present
+        external_data = Path("/app/external_data")
+        if external_data.exists() and external_data not in search_roots:
+            search_roots.append(external_data)
+
+        # Check any extra paths specified via env
+        extra_paths = os.environ.get("NEXULOOM_EXTRA_DB_PATHS") or os.environ.get("UDI_EXTRA_DB_PATHS")
+        if extra_paths:
+            for p_str in extra_paths.replace(";", ":").replace(",", ":").split(":"):
+                p_path = Path(p_str.strip())
+                if p_path.exists() and p_path not in search_roots:
+                    search_roots.append(p_path)
+
         discovered = []
         existing_names = {c["name"] for c in self.list_connections()}
         existing_paths = set()
@@ -196,9 +217,12 @@ class ConnectionRegistry:
                     except Exception:
                         continue
 
-                    # Generate clean connection name
+                    # Generate clean connection name (strip generic container/root prefixes)
                     parent_dir_name = p.parent.parent.name if p.parent.name in ("data", "db") else p.parent.name
-                    cand_name = f"{parent_dir_name}_{p.stem}" if parent_dir_name and parent_dir_name != p.stem else p.stem
+                    if parent_dir_name.lower() in ("app", "root", "home", "workspace", "scratch", "tmp", ""):
+                        cand_name = p.stem
+                    else:
+                        cand_name = f"{parent_dir_name}_{p.stem}" if parent_dir_name and parent_dir_name != p.stem else p.stem
                     counter = 1
                     base_cand = cand_name
                     while cand_name in existing_names:
