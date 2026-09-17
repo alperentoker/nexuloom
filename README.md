@@ -146,7 +146,33 @@ nexuloom/
 
 ## 3. Quick Start & Installation
 
-### Method 1: Automatic Setup (Recommended)
+### Method 1: Docker (Fastest & Recommended for Development)
+
+Nexuloom comes with an optimized Docker and Docker Compose environment featuring **live-reload volume mounting** and persistent data storage:
+
+```bash
+# 1. Clone repository
+git clone https://github.com/alperentoker/nexuloom.git
+cd nexuloom
+
+# 2. Build and launch with Docker Compose
+docker compose up --build
+```
+
+- Open **`http://localhost:8001`** in your browser.
+- **Hot-Reloading**: Any code edits in `app/`, `frontend/`, or `scripts/` reflect instantly inside the container.
+- **Run CLI commands inside Docker**:
+  ```bash
+  docker compose exec nexuloom nexuloom health
+  docker compose exec nexuloom nexuloom inspect --database demo_enterprise
+  docker compose exec nexuloom pytest tests/
+  ```
+- **Optional Demo Databases**: Run with PostgreSQL & MySQL companions for enterprise connection testing:
+  ```bash
+  docker compose --profile demo-dbs up -d
+  ```
+
+### Method 2: Automatic Local Setup (setup.sh)
 
 After cloning the repository, you can set up the virtual environment, install dependencies, seed the enterprise demo database, and run verification tests with a single command:
 
@@ -157,7 +183,7 @@ chmod +x setup.sh
 ./setup.sh
 ```
 
-### Method 2: Manual Setup
+### Method 3: Manual Local Setup
 
 ```bash
 # 1. Clone repository
