@@ -128,7 +128,7 @@ class ConnectionRegistry:
                 cand = settings.NEXULOOM_DATA_DIR / fname
                 if cand.exists():
                     db_target = str(cand)
-            elif not in_docker and db_target.startswith("/app/"):
+            elif not in_docker and (db_target.startswith("/app/") or not Path(db_target).exists()):
                 fname = Path(db_target).name
                 cand = settings.NEXULOOM_DATA_DIR / fname
                 if cand.exists():
@@ -160,36 +160,27 @@ class ConnectionRegistry:
 
         with self._get_connection() as conn:
             conn.execute(
-                """
-                UPDATE database_connections
-                SET last_tested_at = ?, last_test_status = ?, last_test_message = ?
-                WHERE name = ?
-                """,
-                (now, status, message, name),
+                "UPDATE database_connections SET last_tested_at = ?, last_test_status = ?, last_test_message = ? WHERE name = ?",
+                (now, status, message, name)
             )
             conn.commit()
 
         return {"success": success, "status": status, "message": message, "tested_at": now}
 
     def auto_discover_local_sqlite(self) -> List[Dict[str, Any]]:
-        """Scans workspace directories for SQLite database files and auto-registers them."""
+        """Scans workspace data directories for SQLite database files and auto-registers them cleanly."""
         from pathlib import Path
         search_roots = [
             settings.NEXULOOM_DATA_DIR,
             settings.BASE_DIR / "data",
         ]
 
-        # Check sibling derindex project data if running on host
-        sibling_derindex = settings.BASE_DIR.parent / "derindex" / "data"
-        if sibling_derindex.exists() and sibling_derindex not in search_roots:
-            search_roots.append(sibling_derindex)
-
         # Check external mounted data in Docker container if present
         external_data = Path("/app/external_data")
         if external_data.exists() and external_data not in search_roots:
             search_roots.append(external_data)
 
-        # Check any extra paths specified via env
+        # Check any extra paths explicitly specified via env
         extra_paths = os.environ.get("NEXULOOM_EXTRA_DB_PATHS") or os.environ.get("UDI_EXTRA_DB_PATHS")
         if extra_paths:
             for p_str in extra_paths.replace(";", ":").replace(",", ":").split(":"):
@@ -198,14 +189,6 @@ class ConnectionRegistry:
                     search_roots.append(p_path)
 
         discovered = []
-        existing_names = {c["name"] for c in self.list_connections()}
-        existing_paths = set()
-        for c in self.list_connections():
-            try:
-                existing_paths.add(str(Path(c["database_name"]).resolve()))
-            except Exception:
-                pass
-
         for root in search_roots:
             if not root.exists():
                 continue
@@ -218,7 +201,28 @@ class ConnectionRegistry:
                     except Exception:
                         continue
 
-                    if resolved_path in existing_paths:
+                    cand_name = p.stem
+
+                    # Check if already registered by name or file basename
+                    existing_conns = self.list_connections()
+                    already_exists = False
+                    for c in existing_conns:
+                        c_name = c["name"]
+                        c_fname = Path(c["database_name"]).name if c.get("database_name") else ""
+                        if c["db_type"] == "sqlite" and (c_name == cand_name or c_fname == p.name):
+                            already_exists = True
+                            # If existing registered path does not exist in this environment, update it to current path
+                            if not Path(c["database_name"]).exists() and p.exists():
+                                with self._get_connection() as conn:
+                                    conn.execute(
+                                        "UPDATE database_connections SET database_name = ? WHERE name = ?",
+                                        (resolved_path, c_name),
+                                    )
+                                    conn.commit()
+                                self.test_and_update_status(c_name)
+                            break
+
+                    if already_exists:
                         continue
 
                     # Check if valid SQLite with at least one table
@@ -231,28 +235,15 @@ class ConnectionRegistry:
                     except Exception:
                         continue
 
-                    # Generate clean connection name (strip generic container/root prefixes)
-                    parent_dir_name = p.parent.parent.name if p.parent.name in ("data", "db") else p.parent.name
-                    if parent_dir_name.lower() in ("app", "root", "home", "workspace", "scratch", "tmp", ""):
-                        cand_name = p.stem
-                    else:
-                        cand_name = f"{parent_dir_name}_{p.stem}" if parent_dir_name and parent_dir_name != p.stem else p.stem
-                    counter = 1
-                    base_cand = cand_name
-                    while cand_name in existing_names:
-                        cand_name = f"{base_cand}_{counter}"
-                        counter += 1
-
                     self.add_connection(
                         name=cand_name,
                         db_type="sqlite",
                         database_name=resolved_path,
                     )
                     self.test_and_update_status(cand_name)
-                    existing_names.add(cand_name)
-                    existing_paths.add(resolved_path)
                     discovered.append(self.get_connection(cand_name))
 
+        existing_names = {c["name"] for c in self.list_connections()}
         # Auto-detect active Docker demo RDBMS containers (PostgreSQL & MySQL)
         in_docker = Path("/.dockerenv").exists() or (os.environ.get("NEXULOOM_ENV") == "development" and Path("/app").exists())
         demo_candidates = [
