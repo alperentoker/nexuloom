@@ -72,3 +72,7 @@ build/
 *.egg-info/
 .eggs/
 wheels/
+
+# Scratch & Temporary
+scratch/
+
