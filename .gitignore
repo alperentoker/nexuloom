@@ -17,6 +17,7 @@ data/*.db
 data/*.db-wal
 data/*.db-shm
 data/*.sqlite3
+data/*.duckdb
 !data/.gitkeep
 
 # Environment & secrets

@@ -36,7 +36,14 @@ class SchemaDiscoverer:
                 continue
 
             try:
-                table_names = inspector.get_table_names(schema=schema)
+                table_names = list(inspector.get_table_names(schema=schema))
+                if hasattr(inspector, "get_view_names"):
+                    try:
+                        for vn in inspector.get_view_names(schema=schema):
+                            if vn not in table_names:
+                                table_names.append(vn)
+                    except Exception:
+                        pass
             except Exception:
                 table_names = []
 

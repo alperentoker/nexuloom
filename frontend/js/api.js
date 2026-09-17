@@ -177,4 +177,116 @@ export const api = {
     const res = await fetch(`${API_BASE}/audit/lineage/graph`);
     return res.json();
   },
+
+  // Scheduler Automation
+  async getScheduledJobs() {
+    const res = await fetch(`${API_BASE}/scheduler/jobs`);
+    return res.json();
+  },
+  async createScheduledJob(data) {
+    const res = await fetch(`${API_BASE}/scheduler/jobs`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    });
+    if (!res.ok) throw new Error((await res.json()).detail || 'Failed to create job');
+    return res.json();
+  },
+  async runJobNow(jobId) {
+    const res = await fetch(`${API_BASE}/scheduler/jobs/${encodeURIComponent(jobId)}/run`, { method: 'POST' });
+    if (!res.ok) throw new Error((await res.json()).detail || 'Failed to trigger job');
+    return res.json();
+  },
+  async toggleJob(jobId) {
+    const res = await fetch(`${API_BASE}/scheduler/jobs/${encodeURIComponent(jobId)}/toggle`, { method: 'POST' });
+    if (!res.ok) throw new Error((await res.json()).detail || 'Failed to toggle job');
+    return res.json();
+  },
+  async deleteScheduledJob(jobId) {
+    const res = await fetch(`${API_BASE}/scheduler/jobs/${encodeURIComponent(jobId)}`, { method: 'DELETE' });
+    return res.json();
+  },
+  async getSchedulerHistory(limit = 50) {
+    const res = await fetch(`${API_BASE}/scheduler/history?limit=${limit}`);
+    return res.json();
+  },
+
+  // Drift Tracking
+  async takeDriftSnapshot(dbName, tableName = null) {
+    const res = await fetch(`${API_BASE}/drift/snapshot`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ database_name: dbName, table_name: tableName }),
+    });
+    if (!res.ok) throw new Error((await res.json()).detail || 'Failed to record drift snapshot');
+    return res.json();
+  },
+  async getSchemaDrift(dbName) {
+    const res = await fetch(`${API_BASE}/drift/schema/${encodeURIComponent(dbName)}`);
+    if (!res.ok) throw new Error((await res.json()).detail || 'Failed to get schema drift');
+    return res.json();
+  },
+  async getDataDrift(dbName, table = null) {
+    const url = table ? `${API_BASE}/drift/data/${encodeURIComponent(dbName)}?table=${encodeURIComponent(table)}` : `${API_BASE}/drift/data/${encodeURIComponent(dbName)}`;
+    const res = await fetch(url);
+    if (!res.ok) throw new Error((await res.json()).detail || 'Failed to get data drift');
+    return res.json();
+  },
+
+  // Custom BI Dashboards & Widgets
+  async getDashboards() {
+    const res = await fetch(`${API_BASE}/dashboards`);
+    return res.json();
+  },
+  async getDashboard(id) {
+    const res = await fetch(`${API_BASE}/dashboards/${encodeURIComponent(id)}`);
+    if (!res.ok) throw new Error((await res.json()).detail || 'Failed to load dashboard');
+    return res.json();
+  },
+  async createDashboard(data) {
+    const res = await fetch(`${API_BASE}/dashboards`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    });
+    return res.json();
+  },
+  async addWidget(dashboardId, data) {
+    const res = await fetch(`${API_BASE}/dashboards/${encodeURIComponent(dashboardId)}/widgets`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    });
+    if (!res.ok) throw new Error((await res.json()).detail || 'Failed to add widget');
+    return res.json();
+  },
+  async updateWidget(dashboardId, widgetId, data) {
+    const res = await fetch(`${API_BASE}/dashboards/${encodeURIComponent(dashboardId)}/widgets/${encodeURIComponent(widgetId)}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    });
+    if (!res.ok) throw new Error((await res.json()).detail || 'Failed to update widget');
+    return res.json();
+  },
+  async deleteWidget(dashboardId, widgetId) {
+    const res = await fetch(`${API_BASE}/dashboards/${encodeURIComponent(dashboardId)}/widgets/${encodeURIComponent(widgetId)}`, {
+      method: 'DELETE',
+    });
+    return res.json();
+  },
+  async getWidgetData(dashboardId, widgetId) {
+    const res = await fetch(`${API_BASE}/dashboards/${encodeURIComponent(dashboardId)}/widgets/${encodeURIComponent(widgetId)}/data`);
+    if (!res.ok) throw new Error((await res.json()).detail || 'Failed to fetch widget data');
+    return res.json();
+  },
+  async previewWidget(data) {
+    const res = await fetch(`${API_BASE}/dashboards/preview-widget`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    });
+    if (!res.ok) throw new Error((await res.json()).detail || 'Failed to preview widget query');
+    return res.json();
+  },
 };

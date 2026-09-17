@@ -425,10 +425,19 @@ async function handleTabSwitch(tabId) {
       await loadAuditAndLineage();
       return;
     }
+    if (tabId === "scheduler") {
+      await window.loadScheduledJobs();
+      await window.loadSchedulerHistory();
+      return;
+    }
+    if (tabId === "custom_dashboard") {
+      await window.loadCustomDashboard();
+      return;
+    }
     if (!currentDb) {
       await loadDatabases();
     }
-    if (!currentDb && tabId !== "databases" && tabId !== "audit") return;
+    if (!currentDb && tabId !== "databases" && tabId !== "audit" && tabId !== "scheduler" && tabId !== "custom_dashboard") return;
 
     switch (tabId) {
       case "overview":
@@ -468,6 +477,16 @@ async function handleTabSwitch(tabId) {
         break;
       case "audit":
         await loadAuditAndLineage();
+        break;
+      case "scheduler":
+        await window.loadScheduledJobs();
+        await window.loadSchedulerHistory();
+        break;
+      case "drift":
+        await window.loadDriftAnalysis();
+        break;
+      case "custom_dashboard":
+        await window.loadCustomDashboard();
         break;
     }
   } catch (err) {
@@ -1348,3 +1367,474 @@ function setupActionButtons() {
   const btnScanDbs = document.getElementById('btnScanDbs');
   if (btnScanDbs) btnScanDbs.addEventListener('click', window.scanLocalDatabases);
 }
+
+// ==========================================
+// 11. SCHEDULER & CRON AUTOMATION
+// ==========================================
+function escapeHtml(str) {
+  if (str === null || str === undefined) return '';
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+}
+
+window.loadScheduledJobs = async function() {
+  const tbody = document.getElementById('schedulerJobsTableBody');
+  if (!tbody) return;
+  tbody.innerHTML = '<tr><td colspan="8" style="text-align: center;">Yükleniyor...</td></tr>';
+  try {
+    const data = await api.getScheduledJobs();
+    const jobs = data.jobs || [];
+    if (jobs.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="8" style="text-align: center; color: var(--text-muted);">Kayıtlı otomasyon görevi bulunamadı.</td></tr>';
+      return;
+    }
+    tbody.innerHTML = jobs.map(j => {
+      const activeBadge = j.is_active 
+        ? '<span class="badge badge-success">AKTİF</span>' 
+        : '<span class="badge badge-neutral">DURDURULDU</span>';
+      const statusBadge = j.last_status === 'SUCCESS' 
+        ? '<span class="badge badge-success">BAŞARILI</span>' 
+        : (j.last_status === 'FAILED' ? '<span class="badge badge-critical">HATA</span>' : '<span class="badge badge-neutral">-</span>');
+      const nextRun = j.next_run_time ? new Date(j.next_run_time).toLocaleString() : '-';
+      const lastRun = j.last_run_at ? new Date(j.last_run_at).toLocaleString() : '-';
+      return `
+        <tr>
+          <td><strong>${escapeHtml(j.name)}</strong><br><small style="color: var(--text-muted);">${escapeHtml(j.id)}</small></td>
+          <td><span class="badge badge-low">${escapeHtml(j.job_type)}</span></td>
+          <td><code>${escapeHtml(j.schedule_value)}</code> (${escapeHtml(j.schedule_type)})</td>
+          <td><span class="badge badge-neutral">${escapeHtml(j.target_db || 'ALL')}</span></td>
+          <td>${nextRun}</td>
+          <td>${lastRun}</td>
+          <td>${statusBadge} ${activeBadge}</td>
+          <td>
+            <div style="display: flex; gap: 6px;">
+              <button class="btn btn-secondary btn-sm" onclick="window.triggerJobNow('${j.id}')" title="Hemen Çalıştır">▶</button>
+              <button class="btn btn-secondary btn-sm" onclick="window.toggleJobActive('${j.id}')" title="${j.is_active ? 'Durdur' : 'Başlat'}">${j.is_active ? '⏸' : '⏯'}</button>
+              <button class="btn btn-secondary btn-sm" onclick="window.deleteScheduledJob('${j.id}')" title="Sil" style="color: #ef4444;">🗑️</button>
+            </div>
+          </td>
+        </tr>
+      `;
+    }).join('');
+  } catch (err) {
+    tbody.innerHTML = `<tr><td colspan="8" style="color: #ef4444; text-align: center;">Hata: ${escapeHtml(err.message)}</td></tr>`;
+  }
+};
+
+window.loadSchedulerHistory = async function() {
+  const tbody = document.getElementById('schedulerHistoryTableBody');
+  if (!tbody) return;
+  try {
+    const data = await api.getSchedulerHistory(30);
+    const hist = data.history || [];
+    if (hist.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="5" style="text-align: center; color: var(--text-muted);">Henüz geçmiş kaydı yok.</td></tr>';
+      return;
+    }
+    tbody.innerHTML = hist.map(h => {
+      const statusBadge = h.status === 'SUCCESS' 
+        ? '<span class="badge badge-success">BAŞARILI</span>' 
+        : (h.status === 'RUNNING' ? '<span class="badge badge-low">ÇALIŞIYOR</span>' : '<span class="badge badge-critical">BAŞARISIZ</span>');
+      return `
+        <tr>
+          <td><strong>${escapeHtml(h.job_name)}</strong></td>
+          <td>${new Date(h.started_at).toLocaleString()}</td>
+          <td>${h.finished_at ? new Date(h.finished_at).toLocaleString() : '-'}</td>
+          <td>${statusBadge}</td>
+          <td><small style="font-family: monospace;">${escapeHtml(h.error || h.details || 'Tamamlandı')}</small></td>
+        </tr>
+      `;
+    }).join('');
+  } catch (err) {
+    tbody.innerHTML = `<tr><td colspan="5" style="color: #ef4444; text-align: center;">Hata: ${escapeHtml(err.message)}</td></tr>`;
+  }
+};
+
+window.triggerJobNow = async function(jobId) {
+  try {
+    const res = await api.runJobNow(jobId);
+    alert(`Görev tamamlandı!\nDurum: ${res.status}\nMesaj: ${res.message}`);
+    await window.loadScheduledJobs();
+    await window.loadSchedulerHistory();
+  } catch (err) {
+    alert(`Hata: ${err.message}`);
+  }
+};
+
+window.toggleJobActive = async function(jobId) {
+  try {
+    await api.toggleJob(jobId);
+    await window.loadScheduledJobs();
+  } catch (err) {
+    alert(`Hata: ${err.message}`);
+  }
+};
+
+window.deleteScheduledJob = async function(jobId) {
+  if (!confirm('Bu zamanlanmış görevi silmek istediğinize emin misiniz?')) return;
+  try {
+    await api.deleteScheduledJob(jobId);
+    await window.loadScheduledJobs();
+  } catch (err) {
+    alert(`Hata: ${err.message}`);
+  }
+};
+
+window.openAddJobModal = function() {
+  const modal = document.getElementById('modalAddJob');
+  const dbSelect = document.getElementById('jobTargetDbSelect');
+  if (dbSelect) {
+    api.getDatabases().then(dbs => {
+      dbSelect.innerHTML = '<option value="ALL">Tüm Aktif Veritabanları (ALL)</option>' +
+        (dbs || []).map(d => `<option value="${escapeHtml(d.name)}">${escapeHtml(d.name)} (${d.db_type})</option>`).join('');
+    });
+  }
+  if (modal) modal.classList.add('active');
+};
+
+window.closeAddJobModal = function() {
+  const modal = document.getElementById('modalAddJob');
+  if (modal) modal.classList.remove('active');
+};
+
+window.submitAddJob = async function() {
+  const name = document.getElementById('jobNameInput')?.value.trim();
+  const job_type = document.getElementById('jobTypeSelect')?.value;
+  const schedule_type = document.getElementById('jobScheduleTypeSelect')?.value;
+  const schedule_value = document.getElementById('jobScheduleValueInput')?.value.trim();
+  const target_db = document.getElementById('jobTargetDbSelect')?.value;
+
+  if (!name || !schedule_value) {
+    alert('Lütfen görev tanımını ve tetikleyici değerini girin.');
+    return;
+  }
+  try {
+    await api.createScheduledJob({ name, job_type, schedule_type, schedule_value, target_db });
+    window.closeAddJobModal();
+    await window.loadScheduledJobs();
+  } catch (err) {
+    alert(`Hata: ${err.message}`);
+  }
+};
+
+// ==========================================
+// 12. DATA & SCHEMA DRIFT TRACKING
+// ==========================================
+window.loadDriftAnalysis = async function() {
+  if (!currentDb) return;
+  const sTbody = document.getElementById('schemaDriftTableBody');
+  const dTbody = document.getElementById('dataDriftTableBody');
+  if (sTbody) sTbody.innerHTML = '<tr><td colspan="8" style="text-align: center;">Şema analizi yapılıyor...</td></tr>';
+  if (dTbody) dTbody.innerHTML = '<tr><td colspan="9" style="text-align: center;">İstatistiksel dağılım analizi yapılıyor...</td></tr>';
+
+  try {
+    // 1. Schema Drift
+    const sRes = await api.getSchemaDrift(currentDb);
+    const sOverallBadge = document.getElementById('schemaDriftOverallBadge');
+    if (sOverallBadge) {
+      if (sRes.overall_status === 'CRITICAL_DRIFT') {
+        sOverallBadge.className = 'badge badge-critical';
+        sOverallBadge.textContent = 'KRİTİK ŞEMA KAYMASI';
+      } else if (sRes.overall_status === 'DRIFT_DETECTED') {
+        sOverallBadge.className = 'badge badge-low';
+        sOverallBadge.textContent = 'ŞEMA DEĞİŞİMİ TESPİT EDİLDİ';
+      } else {
+        sOverallBadge.className = 'badge badge-success';
+        sOverallBadge.textContent = 'KARARLI (DEĞİŞİMSİZ)';
+      }
+    }
+
+    if (sTbody) {
+      const tables = sRes.tables || [];
+      if (tables.length === 0) {
+        sTbody.innerHTML = '<tr><td colspan="8" style="text-align: center; color: var(--text-muted);">Tablo bulunamadı.</td></tr>';
+      } else {
+        sTbody.innerHTML = tables.map(t => {
+          const badge = t.drift_detected 
+            ? `<span class="badge ${t.severity === 'CRITICAL' ? 'badge-critical' : 'badge-low'}">KAYMA TESPİTİ (${t.severity})</span>` 
+            : '<span class="badge badge-success">KARARLI</span>';
+          const added = (t.added_columns || []).map(c => `+${c.name}`).join(', ') || '-';
+          const removed = (t.removed_columns || []).map(c => `-${c.name}`).join(', ') || '-';
+          const modified = (t.modified_columns || []).map(c => `${c.name} (${c.old_type}→${c.new_type})`).join(', ') || '-';
+          const bDate = t.baseline_date ? new Date(t.baseline_date).toLocaleString() : 'İlk Referans';
+          return `
+            <tr>
+              <td><strong>${escapeHtml(t.table_name)}</strong></td>
+              <td>${badge}</td>
+              <td>${t.current_columns_count} kolon</td>
+              <td style="color: #10b981;">${escapeHtml(added)}</td>
+              <td style="color: #ef4444;">${escapeHtml(removed)}</td>
+              <td style="color: #f59e0b;">${escapeHtml(modified)}</td>
+              <td><small>${bDate}</small></td>
+              <td><small>${escapeHtml(t.summary)}</small></td>
+            </tr>
+          `;
+        }).join('');
+      }
+    }
+
+    // 2. Data Drift
+    const dRes = await api.getDataDrift(currentDb, currentTable || null);
+    const dOverallBadge = document.getElementById('dataDriftOverallBadge');
+    if (dOverallBadge) {
+      if (dRes.overall_status === 'DRIFT_DETECTED') {
+        dOverallBadge.className = 'badge badge-critical';
+        dOverallBadge.textContent = `${dRes.total_drifted_columns} KOLONDA KAYMA TESPİT EDİLDİ`;
+      } else {
+        dOverallBadge.className = 'badge badge-success';
+        dOverallBadge.textContent = 'DAĞILIMLAR KARARLI (KS-TESTİ GEÇTİ)';
+      }
+    }
+
+    if (dTbody) {
+      let rowsHtml = '';
+      const tblList = dRes.tables || [];
+      tblList.forEach(tbl => {
+        (tbl.columns || []).forEach(col => {
+          const badge = col.drift_detected 
+            ? `<span class="badge ${col.severity === 'CRITICAL' ? 'badge-critical' : 'badge-low'}">KAYMA (${col.severity})</span>` 
+            : '<span class="badge badge-success">KARARLI</span>';
+          const meanShiftColor = Math.abs(col.mean_shift_pct) > 20 ? '#ef4444' : (Math.abs(col.mean_shift_pct) > 10 ? '#f59e0b' : 'var(--text-color)');
+          rowsHtml += `
+            <tr>
+              <td><strong>${escapeHtml(tbl.table_name)}</strong></td>
+              <td><code>${escapeHtml(col.column_name)}</code></td>
+              <td>${badge}</td>
+              <td><strong>${col.ks_statistic}</strong></td>
+              <td>${col.p_value}</td>
+              <td style="color: ${meanShiftColor}; font-weight: 600;">%${col.mean_shift_pct > 0 ? '+' : ''}${col.mean_shift_pct}</td>
+              <td>${col.baseline_mean}</td>
+              <td>${col.current_mean}</td>
+              <td><small>${escapeHtml(col.distribution_summary)}</small></td>
+            </tr>
+          `;
+        });
+      });
+      dTbody.innerHTML = rowsHtml || '<tr><td colspan="9" style="text-align: center; color: var(--text-muted);">Sayısal kolon verisi bulunamadı.</td></tr>';
+    }
+  } catch (err) {
+    if (sTbody) sTbody.innerHTML = `<tr><td colspan="8" style="color: #ef4444; text-align: center;">Hata: ${escapeHtml(err.message)}</td></tr>`;
+    if (dTbody) dTbody.innerHTML = `<tr><td colspan="9" style="color: #ef4444; text-align: center;">Hata: ${escapeHtml(err.message)}</td></tr>`;
+  }
+};
+
+window.takeDriftSnapshot = async function() {
+  if (!currentDb) return;
+  try {
+    const res = await api.takeDriftSnapshot(currentDb, currentTable || null);
+    alert(`Referans Snapshot başarıyla kaydedildi!\nŞema Tabloları: ${res.schema_snapshots_count}\nİstatistiksel Kolon Temelleri: ${res.data_baselines_count}`);
+    await window.loadDriftAnalysis();
+  } catch (err) {
+    alert(`Snapshot Hatası: ${err.message}`);
+  }
+};
+
+// ==========================================
+// 13. CUSTOM BI DASHBOARD & WIDGET GRID
+// ==========================================
+window.activeCustomDashboardId = 'default_executive_bi';
+
+window.loadCustomDashboard = async function() {
+  const container = document.getElementById('customBiWidgetGrid');
+  if (!container) return;
+  container.innerHTML = '<div style="grid-column: span 12; text-align: center; padding: 40px; color: var(--text-muted);">Panodaki bileşenler ve grafikler yükleniyor...</div>';
+
+  try {
+    const dash = await api.getDashboard(window.activeCustomDashboardId);
+    const widgets = dash.widgets || [];
+    if (widgets.length === 0) {
+      container.innerHTML = '<div style="grid-column: span 12; text-align: center; padding: 40px; color: var(--text-muted);">Panoda henüz bileşen bulunmuyor. "+ Yeni Bileşen Ekle" butonuna tıklayarak ilk bileşeninizi oluşturun.</div>';
+      return;
+    }
+
+    container.innerHTML = '';
+    for (const w of widgets) {
+      const colSpan = w.grid_w || 6;
+      const widgetCard = document.createElement('div');
+      widgetCard.className = 'card';
+      widgetCard.style.gridColumn = `span ${colSpan}`;
+      widgetCard.style.display = 'flex';
+      widgetCard.style.flexDirection = 'column';
+      widgetCard.style.minHeight = '230px';
+
+      widgetCard.innerHTML = `
+        <div class="card-header" style="display: flex; justify-content: space-between; align-items: center;">
+          <span class="card-title">${escapeHtml(w.title)}</span>
+          <div style="display: flex; gap: 8px; align-items: center;">
+            <span class="badge badge-neutral" style="font-size: 10px;">${escapeHtml(w.database_name)}</span>
+            <button class="btn btn-secondary btn-sm" onclick="window.removeWidget('${w.id}')" title="Bileşeni Kaldır" style="color: #ef4444; padding: 2px 6px;">✕</button>
+          </div>
+        </div>
+        <div id="widget_body_${w.id}" style="flex: 1; display: flex; align-items: center; justify-content: center; padding: 8px; width: 100%;">
+          <span style="color: var(--text-muted); font-size: 12px;">Sorgu çalıştırılıyor...</span>
+        </div>
+      `;
+      container.appendChild(widgetCard);
+
+      // Async render widget live data
+      renderWidgetData(w);
+    }
+  } catch (err) {
+    container.innerHTML = `<div style="grid-column: span 12; color: #ef4444; text-align: center; padding: 20px;">Hata: ${escapeHtml(err.message)}</div>`;
+  }
+};
+
+async function renderWidgetData(widget) {
+  const bodyEl = document.getElementById(`widget_body_${widget.id}`);
+  if (!bodyEl) return;
+  try {
+    const res = await api.getWidgetData(window.activeCustomDashboardId, widget.id);
+    bodyEl.innerHTML = '';
+
+    if (widget.widget_type === 'kpi_card') {
+      const prefix = res.prefix || '';
+      const suffix = res.suffix || '';
+      let displayVal = res.kpi_value;
+      if (typeof displayVal === 'number') {
+        displayVal = displayVal.toLocaleString();
+      }
+      bodyEl.innerHTML = `
+        <div style="text-align: center; padding: 16px;">
+          <div class="metric-number" style="font-size: 2.2rem; color: #06b6d4; font-weight: 700;">${prefix}${displayVal}${suffix}</div>
+          <div style="font-size: 12px; color: var(--text-muted); margin-top: 4px;">Kayıt Sayısı: ${res.row_count}</div>
+        </div>
+      `;
+    } else if (widget.widget_type === 'bar_chart' || widget.widget_type === 'line_chart') {
+      const canvasId = `chart_${widget.id}`;
+      bodyEl.innerHTML = `<div class="chart-box" style="width: 100%; height: 200px;"><canvas id="${canvasId}"></canvas></div>`;
+      if (widget.widget_type === 'line_chart') {
+        charts.renderLine(canvasId, res.labels || [], res.values || [], res.y_label || 'Değer', '#06b6d4');
+      } else {
+        charts.renderBar(canvasId, res.labels || [], res.values || [], res.y_label || 'Değer', '#06b6d4');
+      }
+    } else if (widget.widget_type === 'donut_chart') {
+      const canvasId = `chart_${widget.id}`;
+      bodyEl.innerHTML = `<div class="chart-box" style="width: 100%; height: 200px;"><canvas id="${canvasId}"></canvas></div>`;
+      charts.renderDonut(
+        canvasId,
+        res.labels || [],
+        res.values || [],
+        ['#06b6d4', '#10b981', '#f59e0b', '#8b5cf6', '#ec4899', '#3b82f6']
+      );
+    } else {
+      // Table
+      const data = res.data || [];
+      const cols = res.columns || [];
+      if (data.length === 0) {
+        bodyEl.innerHTML = '<span style="color: var(--text-muted);">Tabloda sonuç yok.</span>';
+        return;
+      }
+      const tableHtml = `
+        <div class="table-container" style="max-height: 250px; width: 100%;">
+          <table class="data-table" style="font-size: 11px;">
+            <thead><tr>${cols.map(c => `<th>${escapeHtml(c)}</th>`).join('')}</tr></thead>
+            <tbody>
+              ${data.slice(0, 10).map(row => `<tr>${cols.map(c => `<td>${escapeHtml(String(row[c] !== null ? row[c] : ''))}</td>`).join('')}</tr>`).join('')}
+            </tbody>
+          </table>
+        </div>
+      `;
+      bodyEl.innerHTML = tableHtml;
+    }
+  } catch (err) {
+    bodyEl.innerHTML = `<span style="color: #ef4444; font-size: 11px;">Sorgu Hatası: ${escapeHtml(err.message)}</span>`;
+  }
+}
+
+window.removeWidget = async function(widgetId) {
+  if (!confirm('Bu bileşeni panodan kaldırmak istediğinize emin misiniz?')) return;
+  try {
+    await api.deleteWidget(window.activeCustomDashboardId, widgetId);
+    await window.loadCustomDashboard();
+  } catch (err) {
+    alert(`Hata: ${err.message}`);
+  }
+};
+
+window.openAddWidgetModal = function() {
+  const modal = document.getElementById('modalAddWidget');
+  const dbSelect = document.getElementById('widgetDbSelect');
+  if (dbSelect) {
+    api.getDatabases().then(dbs => {
+      dbSelect.innerHTML = (dbs || []).map(d => `<option value="${escapeHtml(d.name)}">${escapeHtml(d.name)} (${d.db_type})</option>`).join('');
+    });
+  }
+  if (modal) modal.classList.add('active');
+};
+
+window.closeAddWidgetModal = function() {
+  const modal = document.getElementById('modalAddWidget');
+  if (modal) modal.classList.remove('active');
+};
+
+window.previewWidgetQuery = async function() {
+  const db_name = document.getElementById('widgetDbSelect')?.value;
+  const sql = document.getElementById('widgetSqlInput')?.value.trim();
+  const w_type = document.getElementById('widgetTypeSelect')?.value;
+  const x_col = document.getElementById('widgetXColInput')?.value.trim();
+  const y_col = document.getElementById('widgetYColInput')?.value.trim();
+  const prefix = document.getElementById('widgetPrefixInput')?.value;
+  const suffix = document.getElementById('widgetSuffixInput')?.value;
+
+  const box = document.getElementById('widgetPreviewBox');
+  const content = document.getElementById('widgetPreviewContent');
+  if (!sql || !db_name) {
+    alert('Lütfen hedef veritabanını ve SQL sorgusunu belirtin.');
+    return;
+  }
+  box.style.display = 'block';
+  content.innerHTML = 'Sorgu çalıştırılıyor...';
+  try {
+    const res = await api.previewWidget({
+      database_name: db_name,
+      sql_query: sql,
+      widget_type: w_type,
+      config: { x_column: x_col, y_column: y_col, prefix, suffix, value_column: y_col || x_col, label_column: x_col }
+    });
+    const p = res.preview;
+    content.innerHTML = `
+      <div style="color: #10b981; font-weight: 600;">✓ Sorgu Başarılı (${p.row_count} satır döndü)</div>
+      <div style="margin-top: 4px; color: var(--text-muted);">Kolonlar: ${(p.columns || []).join(', ')}</div>
+      ${p.kpi_value !== undefined ? `<div style="font-size: 16px; font-weight: bold; margin-top: 6px; color: #06b6d4;">Önizleme Değeri: ${p.prefix || ''}${p.kpi_value}${p.suffix || ''}</div>` : ''}
+    `;
+  } catch (err) {
+    content.innerHTML = `<span style="color: #ef4444;">Hata: ${escapeHtml(err.message)}</span>`;
+  }
+};
+
+window.submitAddWidget = async function() {
+  const title = document.getElementById('widgetTitleInput')?.value.trim();
+  const database_name = document.getElementById('widgetDbSelect')?.value;
+  const sql_query = document.getElementById('widgetSqlInput')?.value.trim();
+  const widget_type = document.getElementById('widgetTypeSelect')?.value;
+  const grid_w = parseInt(document.getElementById('widgetWidthSelect')?.value || '6', 10);
+  const x_col = document.getElementById('widgetXColInput')?.value.trim();
+  const y_col = document.getElementById('widgetYColInput')?.value.trim();
+  const prefix = document.getElementById('widgetPrefixInput')?.value;
+  const suffix = document.getElementById('widgetSuffixInput')?.value;
+
+  if (!title || !sql_query || !database_name) {
+    alert('Lütfen başlık, veritabanı ve SQL sorgusunu doldurun.');
+    return;
+  }
+
+  try {
+    await api.addWidget(window.activeCustomDashboardId, {
+      title,
+      widget_type,
+      database_name,
+      sql_query,
+      grid_w,
+      grid_h: 4,
+      config: { x_column: x_col, y_column: y_col, value_column: y_col || x_col, label_column: x_col, prefix, suffix }
+    });
+    window.closeAddWidgetModal();
+    await window.loadCustomDashboard();
+  } catch (err) {
+    alert(`Kaydetme Hatası: ${err.message}`);
+  }
+};

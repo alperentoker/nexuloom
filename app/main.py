@@ -18,11 +18,37 @@ from app.api.routes_insights import router as insights_router
 from app.api.routes_reports import router as reports_router
 from app.api.routes_query import router as query_router
 from app.api.routes_audit import router as audit_router
+from app.api.routes_scheduler import router as scheduler_router
+from app.api.routes_drift import router as drift_router
+from app.api.routes_dashboards import router as dashboards_router
+from contextlib import asynccontextmanager
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    try:
+        from app.database.registry import connection_registry
+        connection_registry.auto_discover_local_sqlite()
+    except Exception:
+        pass
+    try:
+        from app.scheduler.manager import scheduler_engine
+        scheduler_engine.start()
+    except Exception:
+        pass
+    yield
+    try:
+        from app.scheduler.manager import scheduler_engine
+        scheduler_engine.shutdown()
+    except Exception:
+        pass
+
 
 app = FastAPI(
     title=settings.APP_NAME,
     version=settings.APP_VERSION,
     description="Nexuloom Data Intelligence Platform - Production-grade analytics engine",
+    lifespan=lifespan,
 )
 
 # CORS
@@ -57,6 +83,9 @@ app.include_router(insights_router)
 app.include_router(reports_router)
 app.include_router(query_router)
 app.include_router(audit_router)
+app.include_router(scheduler_router)
+app.include_router(drift_router)
+app.include_router(dashboards_router)
 
 
 @app.get("/api/health")

@@ -62,6 +62,9 @@
         <li class="nav-item"><a class="nav-link" data-tab="insights" onclick="window.switchTab('insights')"><span class="nav-icon">💡</span> <span data-i18n="navInsights">Kök Neden & İçgörüler</span></a></li>
         <li class="nav-item"><a class="nav-link" data-tab="query" onclick="window.switchTab('query')"><span class="nav-icon">💻</span> <span data-i18n="navQuery">Salt-Okunur Güvenli SQL</span></a></li>
         <li class="nav-item"><a class="nav-link" data-tab="reports" onclick="window.switchTab('reports')"><span class="nav-icon">📑</span> <span data-i18n="navReports">Rapor Oluşturucu</span></a></li>
+        <li class="nav-item"><a class="nav-link" data-tab="scheduler" onclick="window.switchTab('scheduler')"><span class="nav-icon">⏱️</span> <span data-i18n="navScheduler">Zamanlanmış Görevler</span></a></li>
+        <li class="nav-item"><a class="nav-link" data-tab="drift" onclick="window.switchTab('drift')"><span class="nav-icon">📉</span> <span data-i18n="navDrift">Veri & Şema Kayması</span></a></li>
+        <li class="nav-item"><a class="nav-link" data-tab="custom_dashboard" onclick="window.switchTab('custom_dashboard')"><span class="nav-icon">📊</span> <span data-i18n="navCustomDashboard">Özel Pano (Custom BI)</span></a></li>
         <li class="nav-item"><a class="nav-link" data-tab="audit" onclick="window.switchTab('audit')"><span class="nav-icon">📋</span> <span data-i18n="navAudit">Denetim & Soykütüğü</span></a></li>
       </ul>
 
@@ -550,6 +553,154 @@
             </div>
           </div>
         </section>
+
+        <!-- 11. SCHEDULER AUTOMATION TAB -->
+        <section id="tab-scheduler" class="tab-view">
+          <div class="page-header" style="display: flex; justify-content: space-between; align-items: flex-start;">
+            <div>
+              <h1 class="page-title" data-i18n="schedulerTitle">Zamanlanmış Görev & Otomasyon Motoru</h1>
+              <p class="page-desc" data-i18n="schedulerDesc">Gece veri kalitesi ve anomali taramaları, aylık yönetici PDF/Excel derlemeleri ve arka plan görevleri.</p>
+            </div>
+            <button id="btnOpenAddJobModal" class="btn btn-primary" onclick="window.openAddJobModal()" data-i18n="btnAddJob">+ Yeni Otomasyon Görevi</button>
+          </div>
+
+          <div class="card" style="margin-bottom: 24px;">
+            <div class="card-header">
+              <span class="card-title">Aktif Zamanlanmış Görevler (APScheduler Engine)</span>
+              <button class="btn btn-secondary btn-sm" onclick="window.loadScheduledJobs()">🔄 Yenile</button>
+            </div>
+            <div class="table-container">
+              <table class="data-table" id="schedulerJobsTable">
+                <thead>
+                  <tr>
+                    <th data-i18n="colJobName">Görev Tanımı</th>
+                    <th data-i18n="colJobType">Görev Türü</th>
+                    <th data-i18n="colSchedule">Tetikleyici / Cron</th>
+                    <th data-i18n="colTargetDb">Hedef DB</th>
+                    <th data-i18n="colNextRun">Sonraki Çalışma</th>
+                    <th data-i18n="colLastRun">Son Çalışma</th>
+                    <th data-i18n="colLastStatus">Son Durum</th>
+                    <th data-i18n="colActions">İşlemler</th>
+                  </tr>
+                </thead>
+                <tbody id="schedulerJobsTableBody">
+                  <tr><td colspan="8" style="text-align: center; color: var(--text-muted);">Yükleniyor...</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="card-header">
+              <span class="card-title" data-i18n="schedulerHistoryTitle">Görev Yürütme Denetim Geçmişi</span>
+              <button class="btn btn-secondary btn-sm" onclick="window.loadSchedulerHistory()">🔄 Yenile</button>
+            </div>
+            <div class="table-container" style="max-height: 350px;">
+              <table class="data-table" id="schedulerHistoryTable">
+                <thead>
+                  <tr>
+                    <th data-i18n="historyJobName">Görev Adı</th>
+                    <th data-i18n="historyStarted">Başlangıç</th>
+                    <th data-i18n="historyFinished">Bitiş</th>
+                    <th data-i18n="historyStatus">Durum</th>
+                    <th data-i18n="historyDetails">Detaylar & Sonuç</th>
+                  </tr>
+                </thead>
+                <tbody id="schedulerHistoryTableBody">
+                  <tr><td colspan="5" style="text-align: center; color: var(--text-muted);">Henüz geçmiş kaydı yok.</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        <!-- 12. DATA & SCHEMA DRIFT TAB -->
+        <section id="tab-drift" class="tab-view">
+          <div class="page-header" style="display: flex; justify-content: space-between; align-items: flex-start;">
+            <div>
+              <h1 class="page-title" data-i18n="driftTitle">Veri Dağılımı ve Şema Kayma Takibi (DataOps / MLOps)</h1>
+              <p class="page-desc" data-i18n="driftDesc">Tablo yapılarındaki değişimler (eklenen/silinen kolonlar) ve sayısal metriklerdeki istatistiksel sapmalar (KS-Testi).</p>
+            </div>
+            <div style="display: flex; gap: 8px;">
+              <button id="btnTakeDriftSnapshot" class="btn btn-primary" onclick="window.takeDriftSnapshot()" data-i18n="btnTakeSnapshot">📸 Anlık Referans Snapshot Al</button>
+              <button class="btn btn-secondary" onclick="window.loadDriftAnalysis()">🔄 Yenile</button>
+            </div>
+          </div>
+
+          <!-- Schema Drift Card -->
+          <div class="card" style="margin-bottom: 24px;">
+            <div class="card-header">
+              <span class="card-title" data-i18n="schemaDriftSubTitle">Zaman İçinde Şema Değişimleri (Schema Drift)</span>
+              <span id="schemaDriftOverallBadge" class="badge badge-success">KARARLI</span>
+            </div>
+            <div class="table-container">
+              <table class="data-table" id="schemaDriftTable">
+                <thead>
+                  <tr>
+                    <th data-i18n="colTableName">Tablo Adı</th>
+                    <th data-i18n="colDriftStatus">Durum</th>
+                    <th>Kolon Sayısı</th>
+                    <th data-i18n="colAddedCols">Eklenen Kolonlar</th>
+                    <th data-i18n="colRemovedCols">Silinen Kolonlar</th>
+                    <th data-i18n="colModifiedCols">Tipi Değişenler</th>
+                    <th data-i18n="colBaselineDate">Referans Tarihi</th>
+                    <th>Özet Değerlendirme</th>
+                  </tr>
+                </thead>
+                <tbody id="schemaDriftTableBody">
+                  <tr><td colspan="8" style="text-align: center; color: var(--text-muted);">Şema verisi yükleniyor...</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- Statistical Data Drift Card -->
+          <div class="card">
+            <div class="card-header">
+              <span class="card-title" data-i18n="dataDriftSubTitle">İstatistiksel Dağılım Kaymaları (Kolmogorov-Smirnov Testi)</span>
+              <span id="dataDriftOverallBadge" class="badge badge-success">KARARLI</span>
+            </div>
+            <div class="table-container">
+              <table class="data-table" id="dataDriftTable">
+                <thead>
+                  <tr>
+                    <th data-i18n="colTableName">Tablo</th>
+                    <th data-i18n="colColumnName">Kolon</th>
+                    <th data-i18n="colDriftStatus">Durum</th>
+                    <th data-i18n="colKsStat">KS İstatistiği</th>
+                    <th data-i18n="colPValue">p-Değeri</th>
+                    <th data-i18n="colMeanShift">Ortalama Sapması</th>
+                    <th>Temel Ort.</th>
+                    <th>Mevcut Ort.</th>
+                    <th data-i18n="colDistributionSummary">Dağılım Özeti</th>
+                  </tr>
+                </thead>
+                <tbody id="dataDriftTableBody">
+                  <tr><td colspan="9" style="text-align: center; color: var(--text-muted);">İstatistiksel dağılım verisi yükleniyor...</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        <!-- 13. CUSTOM BI DASHBOARD TAB -->
+        <section id="tab-custom_dashboard" class="tab-view">
+          <div class="page-header" style="display: flex; justify-content: space-between; align-items: flex-start;">
+            <div>
+              <h1 class="page-title" data-i18n="customDashTitle">Özel BI Panosu & Dinamik Bileşenler (Custom BI Grid)</h1>
+              <p class="page-desc" data-i18n="customDashDesc">DuckDB, Parquet ve ilişkisel veritabanları üzerinde özel SQL sorgularıyla canlı grafik ve KPI oluşturun.</p>
+            </div>
+            <div style="display: flex; gap: 8px;">
+              <button id="btnOpenAddWidgetModal" class="btn btn-primary" onclick="window.openAddWidgetModal()" data-i18n="btnAddWidget">+ Yeni Bileşen Ekle</button>
+              <button class="btn btn-secondary" onclick="window.loadCustomDashboard()" data-i18n="btnRefreshWidgets">🔄 Verileri Yenile</button>
+            </div>
+          </div>
+
+          <!-- Dynamic Grid for widgets -->
+          <div id="customBiWidgetGrid" style="display: grid; grid-template-columns: repeat(12, 1fr); gap: 16px;">
+            <!-- Rendered dynamically in app.js -->
+          </div>
+        </section>
       </main>
     </div>
   </div>
@@ -566,6 +717,7 @@
         <label data-i18n="modalDbTypeLabel">Veritabanı Türü</label>
         <select id="dbTypeSelect" class="form-input">
           <option value="sqlite">SQLite</option>
+          <option value="duckdb">DuckDB / Parquet / CSV OLAP</option>
           <option value="postgresql">PostgreSQL</option>
           <option value="mysql">MySQL</option>
           <option value="mssql">MSSQL Server</option>
@@ -626,6 +778,119 @@
     </div>
   </div>
 
-  <script type="module" src="/static/js/app.js?v=1.0.5"></script>
+  <!-- MODAL: ADD SCHEDULED JOB -->
+  <div id="modalAddJob" class="modal-overlay">
+    <div class="modal-content">
+      <h2 style="margin-bottom: 16px;" data-i18n="btnAddJob">+ Yeni Otomasyon Görevi</h2>
+      <div class="form-group">
+        <label data-i18n="colJobName">Görev Tanımı</label>
+        <input id="jobNameInput" class="form-input" placeholder="örn. Gece 03:00 Kalite ve Anomali Taraması" />
+      </div>
+      <div class="form-group">
+        <label data-i18n="colJobType">Görev Türü</label>
+        <select id="jobTypeSelect" class="form-input">
+          <option value="nightly_scan">Gece Veri Kalitesi & Anomali Taraması (nightly_scan)</option>
+          <option value="monthly_report">Aylık Yönetim Brifingi Derleme (PDF/Excel) (monthly_report)</option>
+          <option value="drift_snapshot">Şema ve Veri Kayması Snapshot'ı (drift_snapshot)</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Tetikleyici Türü</label>
+        <select id="jobScheduleTypeSelect" class="form-input">
+          <option value="cron">Cron İfadesi (Standart 5 Alanlı)</option>
+          <option value="interval">Aralık (Saniye Cinsinden)</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label data-i18n="colSchedule">Tetikleyici Değeri (Cron / Saniye)</label>
+        <input id="jobScheduleValueInput" class="form-input" value="0 3 * * *" placeholder="örn. 0 3 * * * veya 21600" />
+      </div>
+      <div class="form-group">
+        <label data-i18n="colTargetDb">Hedef Veritabanı</label>
+        <select id="jobTargetDbSelect" class="form-input">
+          <option value="ALL">Tüm Aktif Veritabanları (ALL)</option>
+        </select>
+      </div>
+      <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px;">
+        <button class="btn btn-secondary" onclick="window.closeAddJobModal()" data-i18n="btnCancel">İptal</button>
+        <button id="btnSubmitAddJob" class="btn btn-primary" onclick="window.submitAddJob()">💾 Görevi Kaydet & Başlat</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: ADD CUSTOM BI WIDGET -->
+  <div id="modalAddWidget" class="modal-overlay">
+    <div class="modal-content" style="max-width: 650px;">
+      <h2 style="margin-bottom: 16px;" data-i18n="modalAddWidgetTitle">Yeni Grafik veya KPI Bileşeni Ekle</h2>
+      <div class="form-group">
+        <label data-i18n="lblWidgetTitle">Bileşen Başlığı</label>
+        <input id="widgetTitleInput" class="form-input" placeholder="örn. Kategori Bazlı Satış Grafiği" />
+      </div>
+      <div class="grid-2" style="gap: 12px;">
+        <div class="form-group">
+          <label data-i18n="lblWidgetType">Bileşen Türü</label>
+          <select id="widgetTypeSelect" class="form-input">
+            <option value="kpi_card" data-i18n="kpiCardType">KPI Metrik Kartı</option>
+            <option value="bar_chart" data-i18n="barChartType">Çubuk Grafik (Bar Chart)</option>
+            <option value="line_chart" data-i18n="lineChartType">Çizgi Grafik (Line Chart)</option>
+            <option value="donut_chart" data-i18n="donutChartType">Halka Grafik (Donut Chart)</option>
+            <option value="table" data-i18n="tableType">SQL Sonuç Tablosu</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label data-i18n="lblTargetDb">Hedef Veritabanı</label>
+          <select id="widgetDbSelect" class="form-input"></select>
+        </div>
+      </div>
+      <div class="form-group">
+        <label data-i18n="lblSqlQuery">Salt-Okunur SQL Sorgusu</label>
+        <textarea id="widgetSqlInput" class="form-input" rows="3" style="font-family: monospace;" placeholder="SELECT product_category, sum(amount) AS total FROM sales_analytics GROUP BY product_category"></textarea>
+      </div>
+      <div class="grid-2" style="gap: 12px;">
+        <div class="form-group">
+          <label data-i18n="lblWidgetWidth">Bileşen Genişliği (Grid Kolonu)</label>
+          <select id="widgetWidthSelect" class="form-input">
+            <option value="4">4 Kolon (1/3 Genişlik)</option>
+            <option value="6" selected>6 Kolon (1/2 Genişlik)</option>
+            <option value="8">8 Kolon (2/3 Genişlik)</option>
+            <option value="12">12 Kolon (Tam Genişlik)</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label data-i18n="lblXCol">X Ekseni / Kategori Kolonu</label>
+          <input id="widgetXColInput" class="form-input" placeholder="örn. product_category" />
+        </div>
+      </div>
+      <div class="grid-2" style="gap: 12px;">
+        <div class="form-group">
+          <label data-i18n="lblYCol">Y Ekseni / Değer Kolonu</label>
+          <input id="widgetYColInput" class="form-input" placeholder="örn. total veya amount" />
+        </div>
+        <div class="form-group">
+          <label data-i18n="lblPrefix">Önek / Sonek (örn: $, ₺ veya %)</label>
+          <div style="display: flex; gap: 8px;">
+            <input id="widgetPrefixInput" class="form-input" placeholder="Önek: ₺" style="width: 50%;" />
+            <input id="widgetSuffixInput" class="form-input" placeholder="Sonek: adet" style="width: 50%;" />
+          </div>
+        </div>
+      </div>
+
+      <!-- Live Preview Area -->
+      <div id="widgetPreviewBox" style="background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 8px; padding: 12px; margin-top: 12px; display: none;">
+        <span style="font-size: 11px; font-weight: 600; color: var(--text-muted); text-transform: uppercase;">Önizleme Sonucu:</span>
+        <div id="widgetPreviewContent" style="margin-top: 8px; font-size: 13px;"></div>
+      </div>
+
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 20px;">
+        <button class="btn btn-secondary" onclick="window.previewWidgetQuery()" data-i18n="btnPreviewWidget">👁️ Önizle</button>
+        <div style="display: flex; gap: 10px;">
+          <button class="btn btn-secondary" onclick="window.closeAddWidgetModal()" data-i18n="btnCancel">İptal</button>
+          <button id="btnSaveWidget" class="btn btn-primary" onclick="window.submitAddWidget()" data-i18n="btnSaveWidget">Kaydet & Panoya Ekle</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script type="module" src="/static/js/app.js?v=1.0.6"></script>
 </body>
 </html>

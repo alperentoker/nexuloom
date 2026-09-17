@@ -64,6 +64,9 @@ class DatabaseConnectionManager:
             p = port or 1433
             driver = "ODBC+Driver+18+for+SQL+Server"
             return f"mssql+pyodbc://{user_pass}{h}:{p}/{database}?driver={driver}&TrustServerCertificate=yes"
+        elif db_type_lower == "duckdb":
+            db_target = database or ":memory:"
+            return f"duckdb:///{db_target}"
         else:
             raise ValueError(f"Unsupported database type: {db_type}")
 
@@ -79,6 +82,7 @@ class DatabaseConnectionManager:
             return self._engines[name]
 
         is_sqlite = connection_url.startswith("sqlite")
+        is_duckdb = connection_url.startswith("duckdb")
         connect_args = {}
         if is_sqlite:
             # Check same thread false for SQLite
@@ -86,6 +90,12 @@ class DatabaseConnectionManager:
             engine = create_engine(
                 connection_url,
                 connect_args=connect_args,
+                poolclass=NullPool,
+                echo=False,
+            )
+        elif is_duckdb:
+            engine = create_engine(
+                connection_url,
                 poolclass=NullPool,
                 echo=False,
             )

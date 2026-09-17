@@ -1,1 +1,4 @@
-"""Automated Report Scheduler for background execution."""
+"""Scheduled tasks and automation package."""
+from app.scheduler.manager import scheduler_engine
+
+__all__ = ["scheduler_engine"]

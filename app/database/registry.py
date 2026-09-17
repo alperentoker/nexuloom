@@ -120,9 +120,23 @@ class ConnectionRegistry:
         if conn_info.get("raw_url"):
             return conn_info["raw_url"]
 
+        db_target = conn_info["database_name"]
+        if conn_info["db_type"] in ("sqlite", "duckdb") and db_target:
+            in_docker = Path("/.dockerenv").exists() or (os.environ.get("NEXULOOM_ENV") == "development" and Path("/app").exists())
+            if in_docker and not Path(db_target).exists():
+                fname = Path(db_target).name
+                cand = settings.NEXULOOM_DATA_DIR / fname
+                if cand.exists():
+                    db_target = str(cand)
+            elif not in_docker and db_target.startswith("/app/"):
+                fname = Path(db_target).name
+                cand = settings.NEXULOOM_DATA_DIR / fname
+                if cand.exists():
+                    db_target = str(cand)
+
         return db_manager.build_connection_url(
             db_type=conn_info["db_type"],
-            database=conn_info["database_name"],
+            database=db_target,
             host=conn_info.get("host"),
             port=conn_info.get("port"),
             username=conn_info.get("username"),
@@ -281,6 +295,22 @@ class ConnectionRegistry:
                     discovered.append(self.get_connection(cand["name"]))
             except Exception:
                 pass
+        # Auto-detect DuckDB parquet / csv files
+        try:
+            from app.database.duckdb_connector import duckdb_manager
+            reg_views = duckdb_manager.auto_register_workspace_files()
+            if reg_views and "duckdb_analytics" not in existing_names:
+                duck_db_file = str(settings.NEXULOOM_DATA_DIR / "analytics.duckdb")
+                self.add_connection(
+                    name="duckdb_analytics",
+                    db_type="duckdb",
+                    database_name=duck_db_file,
+                )
+                self.test_and_update_status("duckdb_analytics")
+                existing_names.add("duckdb_analytics")
+                discovered.append(self.get_connection("duckdb_analytics"))
+        except Exception:
+            pass
 
         return discovered
 

@@ -81,6 +81,12 @@ class SQLSafetyValidator:
         if not name or not isinstance(name, str):
             raise SQLSafetyError("SQL identifier cannot be empty.")
         clean = name.strip()
+        if "." in clean:
+            parts = clean.split(".")
+            for p in parts:
+                if not re.match(r"^[a-zA-Z_][a-zA-Z0-9_]*$", p):
+                    raise SQLSafetyError(f"Invalid SQL identifier component: '{p}'.")
+            return clean
         if not re.match(r"^[a-zA-Z_][a-zA-Z0-9_]*$", clean):
             raise SQLSafetyError(f"Invalid SQL identifier: '{name}'. Identifiers must contain only alphanumeric characters and underscores.")
         return clean
