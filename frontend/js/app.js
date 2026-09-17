@@ -638,7 +638,14 @@ async function loadOverview() {
     }
 
     // Render Revenue Time-Series Chart or Table Size Distribution
+    const overviewChartBox = document.getElementById('overviewRevenueChart');
+    const overviewCardHeader = overviewChartBox ? overviewChartBox.closest('.card')?.querySelector('.card-header') : null;
+    const overviewChartTitle = overviewCardHeader?.querySelector('.card-title');
+    const overviewChartBadge = overviewCardHeader?.querySelector('.badge');
+
     if (evaluatedKpis.length > 0 && evaluatedKpis[0].time_series?.length > 1) {
+      if (overviewChartTitle) overviewChartTitle.textContent = isTr ? 'Gelir Yörüngesi & Hareketli Ortalama' : 'Revenue Trajectory & Moving Avg';
+      if (overviewChartBadge) overviewChartBadge.textContent = isTr ? 'Trend Analizi' : 'Trend Analysis';
       const ts = evaluatedKpis[0].time_series;
       charts.renderLine(
         'overviewRevenueChart',
@@ -648,6 +655,8 @@ async function loadOverview() {
         '#6366f1'
       );
     } else {
+      if (overviewChartTitle) overviewChartTitle.textContent = isTr ? 'Tablo Kayıt & Boyut Dağılımı' : 'Table Record & Size Distribution';
+      if (overviewChartBadge) overviewChartBadge.textContent = isTr ? 'Hacim Analizi' : 'Volume Analysis';
       const catalog = await api.getCatalog(currentDb);
       const topTables = (catalog.tables || []).slice(0, 8);
       charts.renderBar(
