@@ -239,6 +239,49 @@ class ConnectionRegistry:
                     existing_paths.add(resolved_path)
                     discovered.append(self.get_connection(cand_name))
 
+        # Auto-detect active Docker demo RDBMS containers (PostgreSQL & MySQL)
+        in_docker = Path("/.dockerenv").exists() or (os.environ.get("NEXULOOM_ENV") == "development" and Path("/app").exists())
+        demo_candidates = [
+            {
+                "name": "postgres_demo",
+                "db_type": "postgresql",
+                "host": "postgres-demo" if in_docker else "localhost",
+                "port": 5432 if in_docker else 5433,
+                "database_name": "analytics_db",
+                "username": "nexuloom",
+                "password": "nexuloom_secret",
+            },
+            {
+                "name": "mysql_demo",
+                "db_type": "mysql",
+                "host": "mysql-demo" if in_docker else "localhost",
+                "port": 3306 if in_docker else 3307,
+                "database_name": "enterprise_crm",
+                "username": "nexuloom",
+                "password": "nexuloom_secret",
+            },
+        ]
+        for cand in demo_candidates:
+            if cand["name"] in existing_names:
+                continue
+            try:
+                test_url = db_manager.build_connection_url(
+                    db_type=cand["db_type"],
+                    database=cand["database_name"],
+                    host=cand["host"],
+                    port=cand["port"],
+                    username=cand["username"],
+                    password=cand["password"],
+                )
+                success, _ = db_manager.test_connection(test_url, timeout=3)
+                if success:
+                    self.add_connection(**cand)
+                    self.test_and_update_status(cand["name"])
+                    existing_names.add(cand["name"])
+                    discovered.append(self.get_connection(cand["name"]))
+            except Exception:
+                pass
+
         return discovered
 
 

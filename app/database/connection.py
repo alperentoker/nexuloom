@@ -44,12 +44,21 @@ class DatabaseConnectionManager:
         safe_pass = urllib.parse.quote_plus(password) if password else ""
         user_pass = f"{safe_user}:{safe_pass}@" if username else ""
         h = host or "localhost"
+        from pathlib import Path
+        import os
+        in_docker = Path("/.dockerenv").exists() or (os.environ.get("NEXULOOM_ENV") == "development" and Path("/app").exists())
 
         if db_type_lower in ("postgresql", "postgres"):
             p = port or 5432
+            if not in_docker and h in ("postgres-demo", "nexuloom-postgres-demo"):
+                h = "localhost"
+                p = 5433
             return f"postgresql+psycopg2://{user_pass}{h}:{p}/{database}"
         elif db_type_lower in ("mysql", "mariadb"):
             p = port or 3306
+            if not in_docker and h in ("mysql-demo", "nexuloom-mysql-demo"):
+                h = "localhost"
+                p = 3307
             return f"mysql+pymysql://{user_pass}{h}:{p}/{database}"
         elif db_type_lower in ("mssql", "sqlserver"):
             p = port or 1433
