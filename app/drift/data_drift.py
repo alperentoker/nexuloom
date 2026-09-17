@@ -9,6 +9,7 @@ import pandas as pd
 from scipy.stats import ks_2samp
 
 from app.core.config import settings
+from app.core.json_util import sanitize_for_json
 from app.database.registry import connection_registry
 from app.database.connection import db_manager
 from app.database.safety import SQLSafetyValidator
@@ -219,7 +220,7 @@ class DataDriftEngine:
                     ),
                 })
 
-        return {
+        return sanitize_for_json({
             "database_name": self.db_name,
             "table_name": table_name,
             "total_numerical_columns": len(columns_report),
@@ -227,4 +228,4 @@ class DataDriftEngine:
             "table_drift_status": "DRIFT_DETECTED" if drift_count > 0 else "STABLE",
             "columns": columns_report,
             "analyzed_at": datetime.now(timezone.utc).isoformat(),
-        }
+        })

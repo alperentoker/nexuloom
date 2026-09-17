@@ -78,7 +78,7 @@ class PDFExporter:
 
         reg_font, bold_font = _ensure_unicode_fonts()
 
-        dest = output_path or (
+        dest = Path(output_path) if output_path else (
             settings.UDI_REPORTS_DIR / "exports" / f"report_{report_data.get('database_name', 'db')}_{int(hash(report_data.get('generated_at', '')) % 1000000)}.pdf"
         )
         dest.parent.mkdir(parents=True, exist_ok=True)

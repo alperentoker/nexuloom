@@ -7,6 +7,7 @@ from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 
 from app.core.config import settings
+from app.core.json_util import sanitize_for_json
 from app.discovery.schema import SchemaDiscoverer
 
 
@@ -183,11 +184,33 @@ class SchemaDriftTracker:
                     "baseline_columns_count": len(baseline_cols),
                 })
 
-        return {
+            # Check for completely dropped tables that existed in baseline snapshots
+            past_tables = conn.execute(
+                "SELECT DISTINCT table_name FROM schema_snapshots WHERE database_name = ?",
+                (self.db_name,)
+            ).fetchall()
+            for (p_tbl,) in past_tables:
+                if p_tbl not in current_tables:
+                    total_drifts += 1
+                    results.append({
+                        "table_name": p_tbl,
+                        "drift_detected": True,
+                        "severity": "CRITICAL",
+                        "status": "TABLE_DROPPED",
+                        "summary": "Tablo veritabanından tamamen kaldırılmış / silinmiş!",
+                        "added_columns": [],
+                        "removed_columns": [],
+                        "modified_columns": [],
+                        "baseline_date": None,
+                        "current_columns_count": 0,
+                        "baseline_columns_count": 0,
+                    })
+
+        return sanitize_for_json({
             "database_name": self.db_name,
             "total_tables": len(results),
             "drift_detected_count": total_drifts,
             "overall_status": "CRITICAL_DRIFT" if any(r["severity"] == "CRITICAL" for r in results) else ("DRIFT_DETECTED" if total_drifts > 0 else "STABLE"),
             "tables": results,
             "analyzed_at": datetime.now(timezone.utc).isoformat(),
-        }
+        })

@@ -301,8 +301,8 @@ class SchedulerEngine:
 
             elif job_type == "monthly_report":
                 from app.reports.builder import ReportBuilder
-                from app.reports.pdf_exporter import PDFReportExporter
-                from app.reports.excel_exporter import ExcelReportExporter
+                from app.reports.pdf_exporter import PDFExporter
+                from app.reports.excel_exporter import ExcelExporter
 
                 reports_dir = settings.BASE_DIR / "reports" / "scheduled"
                 reports_dir.mkdir(parents=True, exist_ok=True)
@@ -319,8 +319,8 @@ class SchedulerEngine:
                         pdf_path = reports_dir / f"Dossier_{db_name}_{timestamp_str}.pdf"
                         excel_path = reports_dir / f"Dossier_{db_name}_{timestamp_str}.xlsx"
 
-                        PDFReportExporter.export(rep_data, str(pdf_path), language="tr")
-                        ExcelReportExporter.export(rep_data, str(excel_path), language="tr")
+                        PDFExporter.export(rep_data, pdf_path, language="tr")
+                        ExcelExporter.export(rep_data, excel_path, language="tr")
 
                         generated_files.append(str(pdf_path.name))
                         generated_files.append(str(excel_path.name))

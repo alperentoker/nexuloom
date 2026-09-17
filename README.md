@@ -115,13 +115,15 @@ nexuloom/
 │   │   ├── builder.py           # Modular report orchestrator
 │   │   ├── html_exporter.py     # Responsive, printable HTML reports
 │   │   ├── pdf_exporter.py      # Corporate PDF generation via ReportLab
-│   │   ├── excel_exporter.py    # 6-sheet styled Excel generation (openpyxl)
+│   │   ├── excel_exporter.py    # Multi-sheet styled Excel generation (openpyxl)
 │   │   └── data_exporter.py     # CSV and JSON exports
-│   ├── llm/
-│   │   ├── client.py            # Local LLM client (Ollama / OpenAI compatible)
-│   │   └── fallback.py          # Deterministic rule-based template generator
+│   ├── drift/
+│   │   ├── schema_drift.py      # Table structure mutation & dropped table tracker
+│   │   └── data_drift.py        # Statistical KS-test & numerical distribution drift
+│   ├── dashboards/
+│   │   └── manager.py           # Custom BI widgets, SQL metric cards & grid layouts
 │   ├── scheduler/
-│   │   └── runner.py            # Automated periodic report runner
+│   │   └── manager.py           # APScheduler cron engine & recurring background jobs
 │   └── main.py                  # FastAPI application entrypoint
 │
 ├── frontend/                    # Web Dashboard
@@ -304,8 +306,9 @@ Phase 4 → Reporting (Complete)
 Phase 5 → Dashboard (Complete)
           FastAPI + SPA dark glassmorphism dashboard, Chart.js interactive visualizations.
 
-Phase 6 → Local LLM (Complete & Extensible)
-          Ollama / OpenAI-compatible endpoint integration with strict offline deterministic fallback.
+Phase 6 → Automation, DuckDB OLAP & Drift Tracking (Complete)
+          In-process Parquet/CSV DuckDB analytics, background APScheduler cron automation,
+          multi-version schema drift tracking, and statistical KS-test data drift monitoring.
 
 Phase 7 → Advanced Data Lineage (Next Phase)
           Graph visualization with interactive node-by-node drillback from report cell to source column.

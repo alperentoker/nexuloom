@@ -7,6 +7,7 @@ from typing import Any, Dict, List, Optional
 import pandas as pd
 
 from app.core.config import settings
+from app.core.json_util import sanitize_for_json
 from app.database.registry import connection_registry
 from app.database.connection import db_manager
 from app.database.safety import SQLSafetyValidator, SQLSafetyError
@@ -399,7 +400,7 @@ class CustomDashboardManager:
         else:  # table or custom
             formatted["data"] = records[:100]
 
-        return formatted
+        return sanitize_for_json(formatted)
 
 
 custom_dashboard_manager = CustomDashboardManager()

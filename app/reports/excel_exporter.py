@@ -31,7 +31,7 @@ class ExcelExporter:
         lang = language or report_data.get("language", "tr")
         is_tr = lang == "tr"
 
-        dest = output_path or (
+        dest = Path(output_path) if output_path else (
             settings.UDI_REPORTS_DIR / "exports" / f"report_{report_data.get('database_name', 'db')}_{int(hash(report_data.get('generated_at', '')) % 1000000)}.xlsx"
         )
         dest.parent.mkdir(parents=True, exist_ok=True)
