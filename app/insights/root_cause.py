@@ -3,6 +3,7 @@ import pandas as pd
 from sqlalchemy import text
 from sqlalchemy.engine import Engine
 from app.database.registry import connection_registry
+from app.database.safety import SQLSafetyValidator
 
 
 class RootCauseTreeBuilder:
@@ -21,16 +22,24 @@ class RootCauseTreeBuilder:
         sample_limit: int = 50000,
     ) -> Dict[str, Any]:
         """Recursively builds an analytical drill-down tree identifying the biggest variance branch at each tier."""
-        query = f'SELECT * FROM "{table_name}" LIMIT {sample_limit}'
+        safe_table_quoted = SQLSafetyValidator.quote_identifier(table_name)
+        safe_metric_col = SQLSafetyValidator.validate_identifier(metric_col)
+        safe_date_col = SQLSafetyValidator.validate_identifier(date_col)
+        if dimension_hierarchy:
+            dimension_hierarchy = [SQLSafetyValidator.validate_identifier(d) for d in dimension_hierarchy]
+
+        query = f'SELECT * FROM {safe_table_quoted} LIMIT {sample_limit}'
         try:
             with self.engine.connect() as conn:
                 df = pd.read_sql(text(query), conn)
         except Exception:
+            clean_tbl = SQLSafetyValidator.validate_table_identifier(table_name)
             with self.engine.connect() as conn:
-                df = pd.read_sql(text(f"SELECT * FROM {table_name} LIMIT {sample_limit}"), conn)
+                df = pd.read_sql(text(f"SELECT * FROM {clean_tbl} LIMIT {sample_limit}"), conn)
 
-        if metric_col not in df.columns or date_col not in df.columns:
-            raise ValueError(f"Columns '{metric_col}' and '{date_col}' are required.")
+        if safe_metric_col not in df.columns or safe_date_col not in df.columns:
+            raise ValueError(f"Columns '{safe_metric_col}' and '{safe_date_col}' are required.")
+
 
         df["_dt"] = pd.to_datetime(df[date_col], errors="coerce")
         clean_df = df.dropna(subset=["_dt", metric_col]).sort_values("_dt")

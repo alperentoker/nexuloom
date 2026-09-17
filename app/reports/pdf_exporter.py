@@ -1,5 +1,6 @@
+import os
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional, Tuple
 from reportlab.lib.pagesizes import letter
 from reportlab.lib import colors
 from reportlab.platypus import (
@@ -11,8 +12,45 @@ from reportlab.platypus import (
     HRFlowable,
 )
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+from reportlab.pdfbase import pdfmetrics
+from reportlab.pdfbase.ttfonts import TTFont
 from app.core.config import settings
 from app.core.i18n import t, localize_kpi_name, localize_severity, localize_rule
+
+_fonts_registered = False
+
+
+def _ensure_unicode_fonts() -> Tuple[str, str]:
+    """Registers Unicode TrueType fonts (DejaVuSans) to ensure Turkish characters render correctly."""
+    global _fonts_registered
+    if _fonts_registered:
+        return "DejaVuSans", "DejaVuSans-Bold"
+
+    regular_candidates = [
+        "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
+        "/usr/share/fonts/dejavu/DejaVuSans.ttf",
+        "/usr/local/share/fonts/DejaVuSans.ttf",
+    ]
+    bold_candidates = [
+        "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",
+        "/usr/share/fonts/dejavu/DejaVuSans-Bold.ttf",
+        "/usr/local/share/fonts/DejaVuSans-Bold.ttf",
+    ]
+
+    reg_path = next((p for p in regular_candidates if os.path.exists(p)), None)
+    bold_path = next((p for p in bold_candidates if os.path.exists(p)), None)
+
+    if reg_path and bold_path:
+        try:
+            pdfmetrics.registerFont(TTFont("DejaVuSans", reg_path))
+            pdfmetrics.registerFont(TTFont("DejaVuSans-Bold", bold_path))
+            pdfmetrics.registerFontFamily("DejaVuSans", normal="DejaVuSans", bold="DejaVuSans-Bold")
+            _fonts_registered = True
+            return "DejaVuSans", "DejaVuSans-Bold"
+        except Exception:
+            pass
+
+    return "Helvetica", "Helvetica-Bold"
 
 
 class PDFExporter:
@@ -27,6 +65,8 @@ class PDFExporter:
     ) -> Path:
         lang = language or report_data.get("language", "tr")
         is_tr = lang == "tr"
+
+        reg_font, bold_font = _ensure_unicode_fonts()
 
         dest = output_path or (
             settings.UDI_REPORTS_DIR / "exports" / f"report_{report_data.get('database_name', 'db')}_{int(hash(report_data.get('generated_at', '')) % 1000000)}.pdf"
@@ -46,6 +86,7 @@ class PDFExporter:
         title_style = ParagraphStyle(
             "DocTitle",
             parent=styles["Heading1"],
+            fontName=bold_font,
             fontSize=20,
             leading=24,
             textColor=colors.HexColor("#0f172a"),
@@ -54,6 +95,7 @@ class PDFExporter:
         meta_style = ParagraphStyle(
             "DocMeta",
             parent=styles["Normal"],
+            fontName=reg_font,
             fontSize=8.5,
             leading=11,
             textColor=colors.HexColor("#64748b"),
@@ -61,6 +103,7 @@ class PDFExporter:
         section_style = ParagraphStyle(
             "DocSection",
             parent=styles["Heading2"],
+            fontName=bold_font,
             fontSize=12,
             leading=15,
             textColor=colors.HexColor("#1e293b"),
@@ -70,6 +113,7 @@ class PDFExporter:
         body_style = ParagraphStyle(
             "DocBody",
             parent=styles["Normal"],
+            fontName=reg_font,
             fontSize=8.5,
             leading=12,
             textColor=colors.HexColor("#334155"),
@@ -77,6 +121,7 @@ class PDFExporter:
         cell_style = ParagraphStyle(
             "DocCell",
             parent=styles["Normal"],
+            fontName=reg_font,
             fontSize=8,
             leading=10,
             textColor=colors.HexColor("#1e293b"),
@@ -84,9 +129,9 @@ class PDFExporter:
         bold_cell_style = ParagraphStyle(
             "DocBoldCell",
             parent=styles["Normal"],
+            fontName=bold_font,
             fontSize=8,
             leading=10,
-            fontName="Helvetica-Bold",
             textColor=colors.HexColor("#0f172a"),
         )
 

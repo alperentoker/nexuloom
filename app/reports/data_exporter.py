@@ -1,9 +1,25 @@
 import csv
 import json
+import math
 from pathlib import Path
 from typing import Any, Dict, Optional
 import pandas as pd
 from app.core.config import settings
+
+
+def _sanitize_for_json(data: Any) -> Any:
+    """Recursively replaces NaN, Infinity, and -Infinity floats with None for strict RFC JSON compliance."""
+    if isinstance(data, float):
+        if math.isnan(data) or math.isinf(data):
+            return None
+        return data
+    elif isinstance(data, dict):
+        return {k: _sanitize_for_json(v) for k, v in data.items()}
+    elif isinstance(data, list):
+        return [_sanitize_for_json(v) for v in data]
+    elif isinstance(data, tuple):
+        return [_sanitize_for_json(v) for v in data]
+    return data
 
 
 class DataExporter:
@@ -15,8 +31,9 @@ class DataExporter:
             settings.UDI_REPORTS_DIR / "exports" / f"report_{report_data.get('database_name', 'db')}_{int(hash(report_data.get('generated_at', '')) % 1000000)}.json"
         )
         dest.parent.mkdir(parents=True, exist_ok=True)
+        sanitized_data = _sanitize_for_json(report_data)
         with open(dest, "w", encoding="utf-8") as f:
-            json.dump(report_data, f, indent=2, default=str)
+            json.dump(sanitized_data, f, indent=2, default=str)
         return dest
 
     @classmethod

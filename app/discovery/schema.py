@@ -1,7 +1,8 @@
 from typing import Any, Dict, List, Optional
-from sqlalchemy import inspect, text
+from sqlalchemy import inspect, text, select, func, table as sa_table
 from sqlalchemy.engine import Engine
 from app.database.registry import connection_registry
+from app.database.safety import SQLSafetyValidator
 from app.core.audit import audit_logger
 from app.core.cache import cache
 
@@ -124,12 +125,15 @@ class SchemaDiscoverer:
                 "default": str(c.get("default", "")) if c.get("default") is not None else None,
             })
 
-        # Calculate row count safely
+        # Calculate row count safely (dialect-agnostic and SQL-safe)
         row_count = 0
         try:
+            safe_tbl = SQLSafetyValidator.validate_identifier(table_name)
+            safe_schema = SQLSafetyValidator.validate_identifier(schema) if schema else None
+            tbl_clause = sa_table(safe_tbl, schema=safe_schema)
+            stmt = select(func.count()).select_from(tbl_clause)
             with self.engine.connect() as conn:
-                qualified_tbl = f'"{schema}"."{table_name}"' if schema else f'"{table_name}"'
-                res = conn.execute(text(f"SELECT COUNT(*) FROM {qualified_tbl}")).scalar()
+                res = conn.execute(stmt).scalar()
                 row_count = int(res) if res is not None else 0
         except Exception:
             row_count = 0

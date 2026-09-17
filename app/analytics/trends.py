@@ -51,10 +51,10 @@ class TrendAnalyzer:
         mean_val = float(np.mean(values))
         norm_slope = (slope / abs(mean_val)) if mean_val != 0 else slope
 
-        # Direction threshold (±2% normalized slope per period)
-        if norm_slope > 0.02 and p_value < 0.15:
+        # Direction threshold (±2% normalized slope per period and statistically significant p < 0.05)
+        if norm_slope > 0.02 and p_value < 0.05:
             direction = "UPWARD"
-        elif norm_slope < -0.02 and p_value < 0.15:
+        elif norm_slope < -0.02 and p_value < 0.05:
             direction = "DOWNWARD"
         else:
             direction = "STABLE"

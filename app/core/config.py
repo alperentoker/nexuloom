@@ -1,7 +1,10 @@
+import logging
 import os
 from pathlib import Path
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from cryptography.fernet import Fernet
+
+logger = logging.getLogger("nexuloom.config")
 
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
 
@@ -75,7 +78,10 @@ class Settings(BaseSettings):
         self.NEXULOOM_LOGS_DIR.mkdir(parents=True, exist_ok=True)
 
         if not self.UDI_FERNET_KEY:
-            # Generate deterministic fallback key if not set
+            logger.warning(
+                "UDI_FERNET_KEY is not defined in environment/.env! Generated an ephemeral Fernet key. "
+                "WARNING: In production, configure a static UDI_FERNET_KEY in .env to prevent database secret decryption failures upon restart."
+            )
             self.UDI_FERNET_KEY = Fernet.generate_key().decode()
 
 

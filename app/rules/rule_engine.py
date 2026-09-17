@@ -48,8 +48,11 @@ class BusinessRuleEngine:
         severity: str = "HIGH",
         alert_message: str = "Business condition violated.",
     ) -> Dict[str, Any]:
-        # Validate condition for dangerous keywords
-        is_safe, err = SQLSafetyValidator.validate_read_only(f"SELECT * FROM tbl WHERE {condition_sql}")
+        # Validate table name
+        safe_table = SQLSafetyValidator.validate_table_identifier(table_name)
+
+        # Validate condition for dangerous keywords and injection
+        is_safe, err = SQLSafetyValidator.validate_condition_sql(condition_sql)
         if not is_safe:
             raise SQLSafetyError(f"Unsafe business rule condition: {err}")
 
@@ -62,7 +65,7 @@ class BusinessRuleEngine:
                     severity, alert_message, is_active, created_at
                 ) VALUES (?, ?, ?, ?, ?, ?, 1, ?)
                 """,
-                (name, database_name, table_name, condition_sql, severity.upper(), alert_message, now),
+                (name, database_name, safe_table, condition_sql, severity.upper(), alert_message, now),
             )
             conn.commit()
 
@@ -70,7 +73,7 @@ class BusinessRuleEngine:
             action="RULE_CREATE",
             database_name=database_name,
             target=name,
-            details={"table": table_name, "condition": condition_sql, "severity": severity},
+            details={"table": safe_table, "condition": condition_sql, "severity": severity},
         )
         return self.get_rule(name)
 
@@ -117,13 +120,21 @@ class BusinessRuleEngine:
         condition = rule["condition_sql"]
         eng = engine or connection_registry.get_engine_for(db_name)
 
-        query = f'SELECT * FROM "{table_name}" WHERE {condition} LIMIT {limit}'
+        # Validate identifiers and condition
+        safe_table_quoted = SQLSafetyValidator.quote_identifier(table_name)
+        is_safe, err = SQLSafetyValidator.validate_condition_sql(condition)
+        if not is_safe:
+            raise SQLSafetyError(f"Unsafe business rule condition: {err}")
+
+        query = f'SELECT * FROM {safe_table_quoted} WHERE {condition} LIMIT {limit}'
         try:
             with eng.connect() as conn:
                 df = pd.read_sql(text(query), conn)
         except Exception:
+            clean_tbl = SQLSafetyValidator.validate_table_identifier(table_name)
             with eng.connect() as conn:
-                df = pd.read_sql(text(f"SELECT * FROM {table_name} WHERE {condition} LIMIT {limit}"), conn)
+                df = pd.read_sql(text(f"SELECT * FROM {clean_tbl} WHERE {condition} LIMIT {limit}"), conn)
+
 
         violation_count = len(df)
         violations = df.to_dict(orient="records")

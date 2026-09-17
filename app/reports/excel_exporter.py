@@ -123,9 +123,24 @@ class ExcelExporter:
             ws.cell(row=r_idx, column=3, value=k.get("current_value", 0)).font = cls.BOLD_FONT
             ws.cell(row=r_idx, column=4, value=k.get("unit", "")).font = cls.REGULAR_FONT
             ws.cell(row=r_idx, column=5, value=k.get("previous_period_value", "-")).font = cls.REGULAR_FONT
-            ws.cell(row=r_idx, column=6, value=f"{k.get('growth_rate_mom_pct', 0):+0.1f}%" if k.get("growth_rate_mom_pct") else "-").font = cls.REGULAR_FONT
+
+            growth = k.get("growth_rate_mom_pct")
+            if growth is not None:
+                c6 = ws.cell(row=r_idx, column=6, value=float(growth) / 100.0)
+                c6.number_format = "+0.0%;-0.0%;0.0%"
+            else:
+                c6 = ws.cell(row=r_idx, column=6, value="-")
+            c6.font = cls.REGULAR_FONT
+
             ws.cell(row=r_idx, column=7, value=k.get("target_value", "-")).font = cls.REGULAR_FONT
-            ws.cell(row=r_idx, column=8, value=f"{k.get('target_achievement_pct', 0):.1f}%" if k.get("target_achievement_pct") else "-").font = cls.REGULAR_FONT
+
+            ach = k.get("target_achievement_pct")
+            if ach is not None:
+                c8 = ws.cell(row=r_idx, column=8, value=float(ach) / 100.0)
+                c8.number_format = "0.0%"
+            else:
+                c8 = ws.cell(row=r_idx, column=8, value="-")
+            c8.font = cls.REGULAR_FONT
 
         for c in ["A", "B", "C", "D", "E", "F", "G", "H"]:
             ws.column_dimensions[c].width = 24
@@ -149,10 +164,26 @@ class ExcelExporter:
 
             ws.cell(row=r_idx, column=1, value=m_name).font = cls.BOLD_FONT
             ws.cell(row=r_idx, column=2, value=direction).font = cls.REGULAR_FONT
-            ws.cell(row=r_idx, column=3, value=f"{t_item.get('total_growth_percentage', 0):+0.1f}%").font = cls.BOLD_FONT
+
+            tot_growth = t_item.get("total_growth_percentage")
+            if tot_growth is not None:
+                c3 = ws.cell(row=r_idx, column=3, value=float(tot_growth) / 100.0)
+                c3.number_format = "+0.0%;-0.0%;0.0%"
+            else:
+                c3 = ws.cell(row=r_idx, column=3, value="-")
+            c3.font = cls.BOLD_FONT
+
             ws.cell(row=r_idx, column=4, value=t_item.get("linear_slope", 0)).font = cls.REGULAR_FONT
             ws.cell(row=r_idx, column=5, value=t_item.get("r_squared", 0)).font = cls.REGULAR_FONT
-            ws.cell(row=r_idx, column=6, value=f"{t_item.get('volatility_cv', 0):.1f}%").font = cls.REGULAR_FONT
+
+            vol = t_item.get("volatility_cv") if t_item.get("volatility_cv") is not None else t_item.get("volatility_coefficient_variation")
+            if vol is not None:
+                c6 = ws.cell(row=r_idx, column=6, value=float(vol) / 100.0)
+                c6.number_format = "0.0%"
+            else:
+                c6 = ws.cell(row=r_idx, column=6, value="-")
+            c6.font = cls.REGULAR_FONT
+
             ws.cell(row=r_idx, column=7, value=exp).font = cls.REGULAR_FONT
 
         ws.column_dimensions["A"].width = 24
@@ -221,7 +252,15 @@ class ExcelExporter:
                 ws.cell(row=r_cursor, column=4, value=sev).font = cls.BOLD_FONT
                 ws.cell(row=r_cursor, column=5, value=v.get("penalty", 0)).font = cls.REGULAR_FONT
                 ws.cell(row=r_cursor, column=6, value=v.get("violation_count", 0)).font = cls.REGULAR_FONT
-                ws.cell(row=r_cursor, column=7, value=f"{v.get('violation_percentage', 0):.1f}%").font = cls.REGULAR_FONT
+
+                v_pct = v.get("violation_percentage")
+                if v_pct is not None:
+                    c7 = ws.cell(row=r_cursor, column=7, value=float(v_pct) / 100.0)
+                    c7.number_format = "0.0%"
+                else:
+                    c7 = ws.cell(row=r_cursor, column=7, value="-")
+                c7.font = cls.REGULAR_FONT
+
                 ws.cell(row=r_cursor, column=8, value=msg).font = cls.REGULAR_FONT
                 r_cursor += 1
 

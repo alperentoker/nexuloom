@@ -5,6 +5,7 @@ from sqlalchemy.engine import Engine
 from app.core.audit import audit_logger
 from app.core.cache import cache
 from app.database.registry import connection_registry
+from app.database.safety import SQLSafetyValidator
 from app.discovery.schema import SchemaDiscoverer
 from app.quality.rules import (
     BaseQualityRule,
@@ -36,16 +37,18 @@ class DataQualityEngine:
 
     def evaluate_table(self, table_name: str, sample_size: int = 50000) -> Dict[str, Any]:
         """Evaluates all rules on a specific table."""
+        safe_table_quoted = SQLSafetyValidator.quote_identifier(table_name)
         discoverer = SchemaDiscoverer(self.db_name, self.engine)
         table_meta = discoverer.inspect_table(table_name)
 
-        query = f'SELECT * FROM "{table_name}" LIMIT {sample_size}'
+        query = f'SELECT * FROM {safe_table_quoted} LIMIT {sample_size}'
         try:
             with self.engine.connect() as conn:
                 df = pd.read_sql(text(query), conn)
         except Exception:
+            clean_tbl = SQLSafetyValidator.validate_table_identifier(table_name)
             with self.engine.connect() as conn:
-                df = pd.read_sql(text(f"SELECT * FROM {table_name} LIMIT {sample_size}"), conn)
+                df = pd.read_sql(text(f"SELECT * FROM {clean_tbl} LIMIT {sample_size}"), conn)
 
         all_results: List[QualityCheckResult] = []
         for rule in self.rules:
@@ -65,13 +68,16 @@ class DataQualityEngine:
             severity_counts[sev] = severity_counts.get(sev, 0) + 1
 
         grade = "EXCELLENT" if score >= 90 else ("GOOD" if score >= 75 else ("FAIR" if score >= 60 else "POOR"))
+        grade_tr = {"EXCELLENT": "MÜKEMMEL", "GOOD": "İYİ", "FAIR": "ORTA", "POOR": "ZAYIF"}.get(grade, grade)
 
         return {
             "database_name": self.db_name,
             "table_name": table_name,
             "quality_score": round(score, 1),
             "quality_grade": grade,
+            "quality_grade_tr": grade_tr,
             "scoring_explanation": f"Base score 100 minus total rule violation penalties of {round(total_penalties, 1)} points.",
+            "scoring_explanation_tr": f"100 temel puandan toplam {round(total_penalties, 1)} kural ihlali cezası düşüldü.",
             "total_checks": len(all_results),
             "violations_count": len(violations),
             "passed_count": len(passed_checks),
@@ -115,6 +121,9 @@ class DataQualityEngine:
         overall_grade = (
             "EXCELLENT" if overall_score >= 90 else ("GOOD" if overall_score >= 75 else ("FAIR" if overall_score >= 60 else "POOR"))
         )
+        overall_grade_tr = (
+            {"EXCELLENT": "MÜKEMMEL", "GOOD": "İYİ", "FAIR": "ORTA", "POOR": "ZAYIF"}.get(overall_grade, overall_grade)
+        )
 
         critical_count = sum(1 for v in all_violations if v["severity"] == "CRITICAL")
         high_count = sum(1 for v in all_violations if v["severity"] == "HIGH")
@@ -123,7 +132,9 @@ class DataQualityEngine:
             "database_name": self.db_name,
             "overall_quality_score": overall_score,
             "overall_grade": overall_grade,
+            "overall_grade_tr": overall_grade_tr,
             "scoring_formula": "Average of individual table quality scores weighted by check results.",
+            "scoring_formula_tr": "Kontrol sonuçlarıyla ağırlıklandırılmış bireysel tablo kalite puanlarının ortalaması.",
             "tables_analyzed": len(table_reports),
             "total_violations": len(all_violations),
             "critical_violations": critical_count,

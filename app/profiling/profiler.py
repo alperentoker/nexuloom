@@ -7,6 +7,7 @@ from sqlalchemy.engine import Engine
 from app.core.audit import audit_logger
 from app.core.cache import cache
 from app.database.registry import connection_registry
+from app.database.safety import SQLSafetyValidator
 
 
 class DataProfiler:
@@ -23,6 +24,7 @@ class DataProfiler:
         use_cache: bool = True,
     ) -> Dict[str, Any]:
         """Profiles an entire table, analyzing each column according to its data type."""
+        safe_table_quoted = SQLSafetyValidator.quote_identifier(table_name)
         cache_key = cache.generate_key("table_profile", self.db_name, table_name, sample_size)
         if use_cache:
             cached = cache.get(cache_key)
@@ -33,21 +35,24 @@ class DataProfiler:
         total_rows = 0
         try:
             with self.engine.connect() as conn:
-                res = conn.execute(text(f'SELECT COUNT(*) FROM "{table_name}"')).scalar()
+                res = conn.execute(text(f'SELECT COUNT(*) FROM {safe_table_quoted}')).scalar()
                 total_rows = int(res) if res is not None else 0
         except Exception:
+            clean_tbl = SQLSafetyValidator.validate_table_identifier(table_name)
             with self.engine.connect() as conn:
-                res = conn.execute(text(f"SELECT COUNT(*) FROM {table_name}")).scalar()
+                res = conn.execute(text(f"SELECT COUNT(*) FROM {clean_tbl}")).scalar()
                 total_rows = int(res) if res is not None else 0
 
         # Load sample or full dataset into DataFrame safely
-        query = f'SELECT * FROM "{table_name}" LIMIT {sample_size}'
+        query = f'SELECT * FROM {safe_table_quoted} LIMIT {sample_size}'
         try:
             with self.engine.connect() as conn:
                 df = pd.read_sql(text(query), conn)
         except Exception:
+            clean_tbl = SQLSafetyValidator.validate_table_identifier(table_name)
             with self.engine.connect() as conn:
-                df = pd.read_sql(text(f"SELECT * FROM {table_name} LIMIT {sample_size}"), conn)
+                df = pd.read_sql(text(f"SELECT * FROM {clean_tbl} LIMIT {sample_size}"), conn)
+
 
         sampled_rows = len(df)
         columns_profile = {}

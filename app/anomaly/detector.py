@@ -6,6 +6,7 @@ from sqlalchemy import text
 from sqlalchemy.engine import Engine
 from app.core.audit import audit_logger
 from app.database.registry import connection_registry
+from app.database.safety import SQLSafetyValidator
 
 
 class AnomalyItem:
@@ -23,8 +24,10 @@ class AnomalyItem:
         explanation: str,
         row_id: Optional[Any] = None,
         explanation_tr: Optional[str] = None,
+        entity_tr: Optional[str] = None,
     ):
         self.entity = entity
+        self.entity_tr = entity_tr or (entity.replace("Row ", "Satır ") if str(entity).startswith("Row ") else entity)
         self.metric = metric
         self.observed_value = round(observed_value, 2)
         self.normal_range_min = round(normal_range_min, 2)
@@ -43,6 +46,7 @@ class AnomalyItem:
         method_tr = {"Z-SCORE": "Z-Skoru", "IQR": "IQR (Çeyrekler Açıklığı)", "ROLLING_WINDOW": "Kayan Pencere", "ISOLATION_FOREST": "İzolasyon Ormanı"}.get(self.method, self.method)
         return {
             "entity": self.entity,
+            "entity_tr": self.entity_tr,
             "metric": self.metric,
             "observed_value": self.observed_value,
             "normal_range": f"{self.normal_range_min} to {self.normal_range_max}",
@@ -91,7 +95,8 @@ class AnomalyDetector:
         entity_series: Optional[pd.Series] = None,
         threshold: float = 2.5,
     ) -> List[AnomalyItem]:
-        clean = series.dropna()
+        # Filter out NaN, positive infinity and negative infinity
+        clean = series.replace([np.inf, -np.inf], np.nan).dropna()
         if len(clean) < 10:
             return []
 
@@ -110,6 +115,7 @@ class AnomalyDetector:
                 dev_pct = ((val - mean) / abs(mean)) * 100 if mean != 0 else 100.0
                 sev = cls.calculate_severity(z)
                 ent = str(entity_series[idx]) if entity_series is not None and idx in entity_series else f"Row {idx}"
+                ent_tr = str(entity_series[idx]) if entity_series is not None and idx in entity_series else f"Satır {idx}"
                 sign = "+" if dev_pct > 0 else ""
                 exp = (
                     f"Observed value {val:.1f} deviates {sign}{dev_pct:.1f}% from mean {mean:.1f} "
@@ -134,6 +140,7 @@ class AnomalyDetector:
                         explanation=exp,
                         row_id=idx,
                         explanation_tr=exp_tr,
+                        entity_tr=ent_tr,
                     )
                 )
 
@@ -147,7 +154,8 @@ class AnomalyDetector:
         entity_series: Optional[pd.Series] = None,
         iqr_multiplier: float = 1.5,
     ) -> List[AnomalyItem]:
-        clean = series.dropna()
+        # Filter out NaN, positive infinity and negative infinity
+        clean = series.replace([np.inf, -np.inf], np.nan).dropna()
         if len(clean) < 10:
             return []
 
@@ -171,6 +179,7 @@ class AnomalyDetector:
 
                 dev_pct = ((val - median) / abs(median)) * 100 if median != 0 else 100.0
                 ent = str(entity_series[idx]) if entity_series is not None and idx in entity_series else f"Row {idx}"
+                ent_tr = str(entity_series[idx]) if entity_series is not None and idx in entity_series else f"Satır {idx}"
                 sign = "+" if dev_pct > 0 else ""
                 exp = (
                     f"Observed value {val:.1f} lies {sign}{dev_pct:.1f}% outside IQR fence [{lower_bound:.1f}, {upper_bound:.1f}] "
@@ -195,6 +204,7 @@ class AnomalyDetector:
                         explanation=exp,
                         row_id=idx,
                         explanation_tr=exp_tr,
+                        entity_tr=ent_tr,
                     )
                 )
 
@@ -210,30 +220,40 @@ class AnomalyDetector:
         window: int = 5,
         threshold: float = 2.5,
     ) -> List[AnomalyItem]:
-        if len(df) < window + 2 or metric_col not in df.columns:
+        if metric_col not in df.columns:
             return []
 
-        sorted_df = df.dropna(subset=[metric_col]).copy()
+        # Filter out inf and nan
+        sorted_df = df.copy()
+        sorted_df[metric_col] = sorted_df[metric_col].replace([np.inf, -np.inf], np.nan)
+        sorted_df = sorted_df.dropna(subset=[metric_col])
+
+        if len(sorted_df) < window + 2:
+            return []
+
         if time_col in sorted_df.columns:
             sorted_df["_dt"] = pd.to_datetime(sorted_df[time_col], errors="coerce")
             sorted_df = sorted_df.sort_values("_dt")
 
+        # Reset index to guarantee unique, sequential indexing
+        sorted_df = sorted_df.reset_index(drop=True)
         s = sorted_df[metric_col]
         rolling_mean = s.rolling(window=window, min_periods=window).mean().shift(1)
         rolling_std = s.rolling(window=window, min_periods=window).std().shift(1)
 
         anomalies = []
-        for idx in s.index:
-            r_mean = rolling_mean.loc[idx]
-            r_std = rolling_std.loc[idx]
-            val = s.loc[idx]
+        for i in range(len(s)):
+            r_mean = rolling_mean.iloc[i]
+            r_std = rolling_std.iloc[i]
+            val = s.iloc[i]
 
             if pd.notna(r_mean) and pd.notna(r_std) and r_std > 0:
                 z = (val - r_mean) / r_std
                 if abs(z) >= threshold:
                     dev_pct = ((val - r_mean) / abs(r_mean)) * 100 if r_mean != 0 else 100.0
                     sev = cls.calculate_severity(z)
-                    ent = str(sorted_df.loc[idx, entity_col]) if entity_col and entity_col in sorted_df.columns else f"Row {idx}"
+                    ent = str(sorted_df.loc[i, entity_col]) if entity_col and entity_col in sorted_df.columns else f"Row {i}"
+                    ent_tr = str(sorted_df.loc[i, entity_col]) if entity_col and entity_col in sorted_df.columns else f"Satır {i}"
                     norm_min = r_mean - 2.0 * r_std
                     norm_max = r_mean + 2.0 * r_std
                     exp = (
@@ -257,8 +277,9 @@ class AnomalyDetector:
                             method="ROLLING_WINDOW",
                             score=float(abs(z)),
                             explanation=exp,
-                            row_id=idx,
+                            row_id=i,
                             explanation_tr=exp_tr,
+                            entity_tr=ent_tr,
                         )
                     )
 
@@ -273,14 +294,22 @@ class AnomalyDetector:
         contamination: float = 0.03,
     ) -> List[AnomalyItem]:
         valid_cols = [c for c in numeric_cols if c in df.columns and pd.api.types.is_numeric_dtype(df[c])]
-        if not valid_cols or len(df) < 20:
+        if not valid_cols or len(df) < 10:
             return []
 
-        sub_df = df[valid_cols].dropna()
-        if len(sub_df) < 20:
+        # Filter out NaN and inf values across selected columns
+        sub_df = df[valid_cols].replace([np.inf, -np.inf], np.nan).dropna()
+        n_samples = len(sub_df)
+        if n_samples < 10:
             return []
 
-        model = IsolationForest(contamination=contamination, random_state=42)
+        # Adaptive contamination to ensure contamination * n_samples >= 1 and prevent scikit-learn errors
+        effective_contamination = contamination
+        if n_samples * effective_contamination < 1.0:
+            effective_contamination = max(1.0 / n_samples, 0.01)
+        effective_contamination = min(effective_contamination, 0.5)
+
+        model = IsolationForest(contamination=effective_contamination, random_state=42)
         preds = model.fit_predict(sub_df)
         scores = -model.decision_function(sub_df)  # higher means more anomalous
 
@@ -297,6 +326,7 @@ class AnomalyDetector:
                 dev_pct = ((val - mean_col) / abs(mean_col)) * 100 if mean_col != 0 else 100.0
 
                 ent = str(df.loc[idx, entity_col]) if entity_col and entity_col in df.columns else f"Row {idx}"
+                ent_tr = str(df.loc[idx, entity_col]) if entity_col and entity_col in df.columns else f"Satır {idx}"
                 exp = (
                     f"Multivariate outlier identified by Isolation Forest (Anomaly Score: {score:.3f}, Severity: {sev}). "
                     f"Observed value: {val:.1f} for {primary_col}."
@@ -320,6 +350,7 @@ class AnomalyDetector:
                         explanation=exp,
                         row_id=idx,
                         explanation_tr=exp_tr,
+                        entity_tr=ent_tr,
                     )
                 )
 
@@ -339,18 +370,23 @@ class AnomalyEngine:
         method: str = "ALL",  # "ZSCORE", "IQR", "ROLLING", "ISOLATION_FOREST", "ALL"
         limit: int = 50000,
     ) -> Dict[str, Any]:
-        query = f'SELECT * FROM "{table_name}" LIMIT {limit}'
+        safe_table_quoted = SQLSafetyValidator.quote_identifier(table_name)
+        safe_metric_col = SQLSafetyValidator.validate_identifier(metric_col)
+        safe_entity_col = SQLSafetyValidator.validate_identifier(entity_col) if entity_col else None
+
+        query = f'SELECT * FROM {safe_table_quoted} LIMIT {limit}'
         try:
             with self.engine.connect() as conn:
                 df = pd.read_sql(text(query), conn)
         except Exception:
+            clean_tbl = SQLSafetyValidator.validate_table_identifier(table_name)
             with self.engine.connect() as conn:
-                df = pd.read_sql(text(f"SELECT * FROM {table_name} LIMIT {limit}"), conn)
+                df = pd.read_sql(text(f"SELECT * FROM {clean_tbl} LIMIT {limit}"), conn)
 
-        if metric_col not in df.columns:
-            raise ValueError(f"Column '{metric_col}' not found in table '{table_name}'.")
+        if safe_metric_col not in df.columns:
+            raise ValueError(f"Column '{safe_metric_col}' not found in table '{table_name}'.")
 
-        ent_series = df[entity_col] if entity_col and entity_col in df.columns else None
+        ent_series = df[safe_entity_col] if safe_entity_col and safe_entity_col in df.columns else None
         results: List[AnomalyItem] = []
 
         m_upper = method.upper()

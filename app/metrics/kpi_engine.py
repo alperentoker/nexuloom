@@ -8,6 +8,7 @@ from sqlalchemy.engine import Engine
 from app.core.config import settings
 from app.core.lineage import lineage_tracker
 from app.database.registry import connection_registry
+from app.database.safety import SQLSafetyValidator, SQLSafetyError
 
 
 class KPIEngine:
@@ -52,6 +53,15 @@ class KPIEngine:
         unit: str = "",
         higher_is_better: bool = True,
     ) -> Dict[str, Any]:
+        # Validate table name and date column
+        safe_table = SQLSafetyValidator.validate_table_identifier(table_name)
+        safe_date_col = SQLSafetyValidator.validate_identifier(date_column) if date_column else None
+
+        # Validate formula against whitelist and injection patterns
+        is_safe_formula, err, _ = SQLSafetyValidator.validate_kpi_formula(formula)
+        if not is_safe_formula:
+            raise SQLSafetyError(f"Invalid KPI formula: {err}")
+
         now = datetime.now(timezone.utc).isoformat()
         with self._get_connection() as conn:
             conn.execute(
@@ -65,9 +75,9 @@ class KPIEngine:
                     name,
                     description,
                     database_name,
-                    table_name,
+                    safe_table,
                     formula,
-                    date_column,
+                    safe_date_col,
                     target_value,
                     unit,
                     1 if higher_is_better else 0,
@@ -117,15 +127,22 @@ class KPIEngine:
         target = kpi["target_value"]
         eng = engine or connection_registry.get_engine_for(db_name)
 
+        # Validate identifiers and formula
+        safe_table_quoted = SQLSafetyValidator.quote_identifier(table_name)
+        is_safe_formula, err, formula_cols = SQLSafetyValidator.validate_kpi_formula(formula)
+        if not is_safe_formula:
+            raise SQLSafetyError(f"Invalid KPI formula: {err}")
+
         # 1. Total Aggregate
-        agg_sql = f'SELECT {formula} AS kpi_val FROM "{table_name}"'
+        agg_sql = f'SELECT {formula} AS kpi_val FROM {safe_table_quoted}'
         try:
             with eng.connect() as conn:
                 res = conn.execute(text(agg_sql)).scalar()
                 current_val = float(res) if res is not None else 0.0
         except Exception:
+            clean_tbl = SQLSafetyValidator.validate_table_identifier(table_name)
             with eng.connect() as conn:
-                res = conn.execute(text(f"SELECT {formula} AS kpi_val FROM {table_name}")).scalar()
+                res = conn.execute(text(f"SELECT {formula} AS kpi_val FROM {clean_tbl}")).scalar()
                 current_val = float(res) if res is not None else 0.0
 
         # Lineage record
@@ -147,17 +164,29 @@ class KPIEngine:
 
         # 2. Time-based slicing if date_column exists
         if date_col:
-            # Query monthly breakdown
-            # Note: SQLite uses strftime('%Y-%m', col), Postgres to_char(col, 'YYYY-MM'), MySQL DATE_FORMAT(col, '%Y-%m')
-            # Let's load the data or aggregate via Pandas for universal compatibility
-            ts_sql = f'SELECT {date_col} as ts_date, {formula} as ts_val FROM "{table_name}" GROUP BY {date_col} ORDER BY {date_col} ASC'
+            safe_date_col = SQLSafetyValidator.validate_identifier(date_col)
+            # Memory optimization: project ONLY required columns rather than SELECT *
+            # Include date column and columns extracted from formula
+            cols_needed = [safe_date_col]
+            for fc in formula_cols:
+                if fc != "*":
+                    cols_needed.append(SQLSafetyValidator.validate_identifier(fc))
+            unique_cols = list(dict.fromkeys(cols_needed))
+            cols_clause = ", ".join(f'"{c}"' for c in unique_cols)
+
+            ts_query = (
+                f'SELECT {cols_clause} FROM {safe_table_quoted} '
+                f'WHERE "{safe_date_col}" IS NOT NULL '
+                f'ORDER BY "{safe_date_col}" DESC LIMIT 50000'
+            )
             try:
                 with eng.connect() as conn:
-                    # Fetch raw columns for formula if possible, or load table subset
-                    raw_df = pd.read_sql(text(f'SELECT * FROM "{table_name}" LIMIT 50000'), conn)
+                    raw_df = pd.read_sql(text(ts_query), conn)
             except Exception:
+                # Fallback query with safe identifiers
                 with eng.connect() as conn:
-                    raw_df = pd.read_sql(text(f"SELECT * FROM {table_name} LIMIT 50000"), conn)
+                    raw_df = pd.read_sql(text(f'SELECT * FROM {safe_table_quoted} LIMIT 50000'), conn)
+
 
             if date_col in raw_df.columns and len(raw_df) > 0:
                 raw_df["_dt"] = pd.to_datetime(raw_df[date_col], errors="coerce")
