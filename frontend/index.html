@@ -60,7 +60,7 @@
         <li class="nav-item"><a class="nav-link" data-tab="anomalies" onclick="window.switchTab('anomalies')"><span class="nav-icon">⚡</span> <span data-i18n="navAnomalies">Anomali Tespiti</span></a></li>
         <li class="nav-item"><a class="nav-link" data-tab="rules" onclick="window.switchTab('rules')"><span class="nav-icon">⚖️</span> <span data-i18n="navRules">İş Kuralları</span></a></li>
         <li class="nav-item"><a class="nav-link" data-tab="insights" onclick="window.switchTab('insights')"><span class="nav-icon">💡</span> <span data-i18n="navInsights">Kök Neden & İçgörüler</span></a></li>
-        <li class="nav-item"><a class="nav-link" data-tab="query" onclick="window.switchTab('query')"><span class="nav-icon">💬</span> <span data-i18n="navQuery">Doğal Dil & Güvenli SQL</span></a></li>
+        <li class="nav-item"><a class="nav-link" data-tab="query" onclick="window.switchTab('query')"><span class="nav-icon">💻</span> <span data-i18n="navQuery">Salt-Okunur Güvenli SQL</span></a></li>
         <li class="nav-item"><a class="nav-link" data-tab="reports" onclick="window.switchTab('reports')"><span class="nav-icon">📑</span> <span data-i18n="navReports">Rapor Oluşturucu</span></a></li>
         <li class="nav-item"><a class="nav-link" data-tab="audit" onclick="window.switchTab('audit')"><span class="nav-icon">📋</span> <span data-i18n="navAudit">Denetim & Soykütüğü</span></a></li>
       </ul>
@@ -446,25 +446,17 @@
           </div>
         </section>
 
-        <!-- 11. NATURAL LANGUAGE & SQL TAB -->
+        <!-- 11. SAFE READ-ONLY SQL QUERY TAB -->
         <section id="tab-query" class="tab-view">
           <div class="page-header">
-            <h1 class="page-title" data-i18n="queryTitle">Doğal Dil & Salt-Okunur Güvenli SQL</h1>
-            <p class="page-desc" data-i18n="queryDesc">Doğal dille analitik soru sorun veya salt-okunur (read-only) güvenli SQL çalıştırın.</p>
+            <h1 class="page-title" data-i18n="queryTitle">Salt-Okunur Güvenli SQL</h1>
+            <p class="page-desc" data-i18n="queryDesc">Aktif veritabanı üzerinde salt-okunur (read-only) güvenli analitik SQL sorguları çalıştırın.</p>
           </div>
 
           <div class="card" style="margin-bottom: 20px;">
             <div class="form-group">
-              <label data-i18n="nlLabel">Doğal Dille Analitik Soru Sorun (örn: 'Bölgeye göre en çok satan ürünler', 'Aylık gelir trendi')</label>
-              <div style="display: flex; gap: 10px;">
-                <input type="text" id="nlInput" class="form-input" placeholder="Analitik sorunuzu doğal dille yazın..." data-i18n-placeholder="nlPlaceholder" />
-                <button id="btnAskNl" class="btn btn-primary" onclick="window.askNaturalLanguage()" data-i18n="btnAskNl">Doğal Dille Sor</button>
-              </div>
-            </div>
-
-            <div class="form-group" style="margin-top: 20px;">
-              <label data-i18n="sqlLabel">Veya Doğrudan Salt-Okunur SQL Çalıştırın (INSERT/UPDATE/DELETE kesinlikle engellenir):</label>
-              <textarea id="sqlInput" class="form-input" rows="3" style="font-family: 'JetBrains Mono', monospace;">SELECT * FROM orders LIMIT 20;</textarea>
+              <label data-i18n="sqlLabel">Salt-Okunur SQL Sorgusu (INSERT/UPDATE/DELETE kesinlikle engellenir):</label>
+              <textarea id="sqlInput" class="form-input" rows="4" style="font-family: 'JetBrains Mono', monospace;">SELECT * FROM orders LIMIT 20;</textarea>
               <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 10px;">
                 <span id="querySafetyStatus" style="font-size: 0.8rem; color: var(--text-muted);" data-i18n="sqlSafetyBadge">Katı Salt-Okunur Mod Aktif</span>
                 <button id="btnRunSql" class="btn btn-success" onclick="window.runSqlQuery()" data-i18n="btnRunSql">▶ SQL Çalıştır</button>

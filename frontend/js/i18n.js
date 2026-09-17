@@ -19,7 +19,7 @@ export const translations = {
     navAnomalies: "Anomali Tespiti",
     navRules: "İş Kuralları",
     navInsights: "Kök Neden & İçgörüler",
-    navQuery: "Doğal Dil & Güvenli SQL",
+    navQuery: "Salt-Okunur Güvenli SQL",
     navReports: "Rapor Oluşturucu",
     navAudit: "Denetim & Soykütüğü",
 
@@ -155,12 +155,9 @@ export const translations = {
     rootCauseTitle: "Hiyerarşik Kök Neden Ayrıştırma Ağacı",
 
     // Query Tab
-    queryTitle: "Doğal Dil & Salt-Okunur Güvenli SQL",
-    queryDesc: "Doğal dille analitik soru sorun veya salt-okunur (read-only) güvenli SQL çalıştırın.",
-    nlLabel: "Doğal Dille Analitik Soru Sorun (örn: 'Bölgeye göre en çok satan ürünler', 'Aylık gelir trendi')",
-    nlPlaceholder: "Analitik sorunuzu doğal dille yazın...",
-    btnAskNl: "Doğal Dille Sor",
-    sqlLabel: "Veya Doğrudan Salt-Okunur SQL Çalıştırın (INSERT/UPDATE/DELETE kesinlikle engellenir):",
+    queryTitle: "Salt-Okunur Güvenli SQL",
+    queryDesc: "Aktif veritabanı üzerinde salt-okunur (read-only) güvenli analitik SQL sorguları çalıştırın.",
+    sqlLabel: "Salt-Okunur SQL Sorgusu (INSERT/UPDATE/DELETE kesinlikle engellenir):",
     btnRunSql: "▶ SQL Çalıştır",
     sqlSafetyBadge: "Katı Salt-Okunur Mod Aktif",
 
@@ -228,7 +225,7 @@ export const translations = {
     navAnomalies: "Anomalies",
     navRules: "Business Rules",
     navInsights: "Insights & Root Cause",
-    navQuery: "Natural Language & SQL",
+    navQuery: "Safe Read-Only SQL",
     navReports: "Report Builder",
     navAudit: "Audit & Lineage",
 
@@ -364,12 +361,9 @@ export const translations = {
     rootCauseTitle: "Hierarchical Root-Cause Tree",
 
     // Query Tab
-    queryTitle: "Natural Language & Strict Read-Only SQL",
-    queryDesc: "Ask analytical questions in natural language or execute safe read-only SQL queries.",
-    nlLabel: "Ask a Natural Language Question (e.g. 'Top selling products by region', 'Monthly revenue trend')",
-    nlPlaceholder: "Type your analytical question in natural language...",
-    btnAskNl: "Ask NL Engine",
-    sqlLabel: "Or Execute Direct Read-Only SQL (INSERT/UPDATE/DELETE strictly blocked):",
+    queryTitle: "Safe Read-Only SQL",
+    queryDesc: "Execute validated, read-only analytical SQL queries directly on the active database.",
+    sqlLabel: "Read-Only SQL Query (INSERT/UPDATE/DELETE strictly blocked):",
     btnRunSql: "▶ Execute SQL",
     sqlSafetyBadge: "Strict Read-Only Mode Active",
 

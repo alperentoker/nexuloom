@@ -265,22 +265,6 @@ window.runSqlQuery = async function() {
   await executeQueryAction(sql);
 };
 
-window.askNaturalLanguage = async function() {
-  const q = document.getElementById('nlInput')?.value;
-  if (!q) return;
-
-  try {
-    const res = await api.askNaturalLanguage(currentDb, q);
-    const sqlInput = document.getElementById('sqlInput');
-    if (sqlInput) sqlInput.value = res.generated_sql;
-    const safety = document.getElementById('querySafetyStatus');
-    if (safety) safety.textContent = `Translated: ${res.explanation} (LLM: ${res.is_llm_used})`;
-    renderQueryResult(res);
-  } catch (e) {
-    alert(`Query failed: ${e.message}`);
-  }
-};
-
 window.runAnomalyScan = async function() {
   const metricCol = document.getElementById('anomalyMetricSelect')?.value;
   const method = document.getElementById('anomalyMethodSelect')?.value || 'ALL';
@@ -922,7 +906,7 @@ async function loadKPIs() {
   try {
     const kpis = await api.getKPIs(currentDb);
     if (!Array.isArray(kpis) || kpis.length === 0) {
-      if (container) container.innerHTML = `<div class="card"><p>${isTr ? 'Bu veritabanı için önceden tanımlanmış KPI bulunamadı. Özel analiz için Doğal Dil veya İş Kuralları sekmesini kullanın.' : 'No predefined KPIs registered for this database. Use Business Rules or Query tabs for custom analysis.'}</p></div>`;
+      if (container) container.innerHTML = `<div class="card"><p>${isTr ? 'Bu veritabanı için önceden tanımlanmış KPI bulunamadı. Özel analiz için Güvenli SQL veya İş Kuralları sekmesini kullanın.' : 'No predefined KPIs registered for this database. Use Business Rules or Safe SQL tabs for custom analysis.'}</p></div>`;
       return;
     }
 
@@ -1351,9 +1335,6 @@ function setupModals() {
 function setupActionButtons() {
   const btnRunSql = document.getElementById('btnRunSql');
   if (btnRunSql) btnRunSql.addEventListener('click', window.runSqlQuery);
-
-  const btnAskNl = document.getElementById('btnAskNl');
-  if (btnAskNl) btnAskNl.addEventListener('click', window.askNaturalLanguage);
 
   const btnRunAnomalyScan = document.getElementById('btnRunAnomalyScan');
   if (btnRunAnomalyScan) btnRunAnomalyScan.addEventListener('click', window.runAnomalyScan);

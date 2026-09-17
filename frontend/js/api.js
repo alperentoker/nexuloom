@@ -167,15 +167,6 @@ export const api = {
     if (!res.ok) throw new Error((await res.json()).detail || 'SQL Query execution failed');
     return res.json();
   },
-  async askNaturalLanguage(dbName, question) {
-    const res = await fetch(`${API_BASE}/query/natural-language`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ database_name: dbName, question }),
-    });
-    if (!res.ok) throw new Error((await res.json()).detail || 'NL query processing failed');
-    return res.json();
-  },
 
   // Audit & Lineage
   async getAuditLogs(limit = 100) {

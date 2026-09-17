@@ -23,7 +23,6 @@ from app.reports.builder import ReportBuilder
 from app.reports.html_exporter import HTMLExporter
 from app.reports.pdf_exporter import PDFExporter
 from app.reports.excel_exporter import ExcelExporter
-from app.llm.client import llm_client
 from app.database.connection import db_manager
 from scripts.seed_demo_db import generate_synthetic_enterprise_db
 
@@ -287,21 +286,9 @@ def report(report_type, database, export_fmt):
 
 @cli.command()
 @click.option("--database", required=True, help="Database name")
-@click.option("--sql", default=None, help="Direct safe read-only SQL query")
-@click.option("--nl", default=None, help="Natural language question to query")
-def query(database, sql, nl):
-    """Executes safe read-only SQL or natural language query."""
-    if nl:
-        discoverer = SchemaDiscoverer(database)
-        catalog = discoverer.discover_catalog()
-        sql_query, expl, is_llm = llm_client.generate_sql_from_nl(nl, catalog)
-        click.secho(f"Query Translated: {sql_query}", fg="cyan")
-        click.echo(f"Explanation: {expl}")
-        sql = sql_query
-
-    if not sql:
-        click.echo("Please specify either --sql or --nl.")
-        return
+@click.option("--sql", required=True, help="Direct safe read-only SQL query")
+def query(database, sql):
+    """Executes safe read-only SQL query."""
 
     engine = connection_registry.get_engine_for(database)
     df = db_manager.execute_read_only_df(engine, sql_query=sql, max_rows=50)

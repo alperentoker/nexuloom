@@ -56,11 +56,6 @@ class Settings(BaseSettings):
     UDI_DEFAULT_PAGE_SIZE: int = 100
     UDI_CACHE_TTL_SECONDS: int = 3600
 
-    # Local LLM
-    UDI_LLM_ENABLED: bool = False
-    UDI_LLM_API_URL: str = "http://localhost:11434/api/generate"
-    UDI_LLM_MODEL: str = "llama3:8b"
-
     # Internal system SQLite path
     @property
     def SYSTEM_DB_PATH(self) -> Path:

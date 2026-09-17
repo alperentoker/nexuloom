@@ -66,7 +66,6 @@ def health_check():
         "app": settings.APP_NAME,
         "version": settings.APP_VERSION,
         "environment": settings.UDI_ENV,
-        "llm_enabled": settings.UDI_LLM_ENABLED,
     }
 
 
