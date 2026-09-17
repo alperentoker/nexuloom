@@ -273,7 +273,7 @@ class ConnectionRegistry:
                     username=cand["username"],
                     password=cand["password"],
                 )
-                success, _ = db_manager.test_connection(test_url, timeout=3)
+                success, _ = db_manager.test_connection(test_url, timeout_seconds=3)
                 if success:
                     self.add_connection(**cand)
                     self.test_and_update_status(cand["name"])

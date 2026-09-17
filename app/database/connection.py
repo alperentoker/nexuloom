@@ -102,11 +102,17 @@ class DatabaseConnectionManager:
         self._engines[name] = engine
         return engine
 
-    def test_connection(self, connection_url: str, timeout_seconds: int = 5) -> Tuple[bool, str]:
+    def test_connection(
+        self,
+        connection_url: str,
+        timeout_seconds: int = 5,
+        timeout: Optional[int] = None,
+    ) -> Tuple[bool, str]:
         """Tests if connection URL can be reached and queried successfully."""
+        effective_timeout = timeout if timeout is not None else timeout_seconds
         try:
             is_sqlite = connection_url.startswith("sqlite")
-            connect_args = {"timeout": timeout_seconds} if is_sqlite else {}
+            connect_args = {"timeout": effective_timeout} if is_sqlite else {}
             engine = create_engine(
                 connection_url,
                 connect_args=connect_args,
